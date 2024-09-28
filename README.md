@@ -17,6 +17,8 @@ HACKER'S EDITION 上で ZUSB 対応を有効にしたエミュレータを使用
 サンプルコードのビルドには [elf2x68k](https://github.com/yunkya2/elf2x68k) が必要です。
 `src` ディレクトリ内で `make` を実行するとビルドできます。
 
+ビルド済みバイナリと、このバイナリを含んだ起動可能な XDF イメージを [prebuilt](prebuilt/) ディレクトリに用意しています。
+
 ## サンプルの説明
 
 ### zusb.x - USB 機器の情報表示
