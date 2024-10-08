@@ -34,6 +34,8 @@
 
 #include <zusb.h>
 
+void msc_test(int epin, int epout, int epint, int sector, int count);
+
 int main(int argc, char **argv)
 {
     int devid = -1;
@@ -64,8 +66,7 @@ int main(int argc, char **argv)
         // devid の指定がなかったらMSCデバイス一覧を表示する
         printf("MSC devices\n");
         devid = 0;
-        // MSC, SCSI transparent command set, Bulk only transport
-        while ((devid = zusb_find_device_with_devclass(ZUSB_CLASS_MSC, 0x06, 0x50, devid))) {
+        while ((devid = zusb_find_device_with_devclass(ZUSB_CLASS_MSC, -1, -1, devid))) {
             zusb->devid = devid;
             while (zusb_get_descriptor(zusbbuf) > 0) {
                 char str[256];
@@ -89,26 +90,47 @@ int main(int argc, char **argv)
         zusb_close();
         return 0;
     }
+    zusb_close();
 
     // MSCデバイスに接続する
 
-    zusb_endpoint_config_t epcfg[ZUSB_N_EP] = {
-        { ZUSB_DIR_IN,  ZUSB_XFER_BULK, 0 },
-        { ZUSB_DIR_OUT, ZUSB_XFER_BULK, 0 },
-        { 0, 0, -1 },
-    };
-
-    if (zusb_connect_device(devid, 1, ZUSB_CLASS_MSC, 0x06, 0x50, epcfg) <= 0) {
-        printf("USB MSCに接続できません\n");
-        zusb_close();
-        return 0;
+    {
+        zusb_open();
+        zusb_endpoint_config_t epcfg[ZUSB_N_EP] = {
+            { ZUSB_DIR_IN,  ZUSB_XFER_BULK, 0 },
+            { ZUSB_DIR_OUT, ZUSB_XFER_BULK, 0 },
+            { 0, 0, -1 },
+        };
+        if (zusb_connect_device(devid, 1, ZUSB_CLASS_MSC, 0x06, 0x50, epcfg) > 0) {
+            // MSC, SCSI transparent command set, Bulk only transport
+            msc_test(0, 1, -1, sector, count);
+            zusb_disconnect_device();
+            zusb_close();
+            return 0;
+        } else {
+            zusb_close();
+        }
+    }
+    {
+        zusb_open();
+        zusb_endpoint_config_t epcfg[ZUSB_N_EP] = {
+            { ZUSB_DIR_IN,  ZUSB_XFER_BULK, 0 },
+            { ZUSB_DIR_OUT, ZUSB_XFER_BULK, 0 },
+            { ZUSB_DIR_IN,  ZUSB_XFER_INTERRUPT, 0 },
+            { 0, 0, -1 },
+        };
+        if (zusb_connect_device(devid, 1, ZUSB_CLASS_MSC, 0x04, 0x00, epcfg) > 0) {
+            // MSC, UFI command set, CBI transport
+            msc_test(0, 1, 2, sector, count);
+            zusb_disconnect_device();
+            zusb_close();
+            return 0;
+        } else {
+            zusb_close();
+        }
     }
 
-    void msc_test(int epin, int epout, int sector, int count);
-    msc_test(0, 1, sector, count);
-
-    zusb_disconnect_device();
-    zusb_close();
+    printf("USB MSCに接続できません\n");
     return 0;
 }
 
@@ -133,8 +155,8 @@ typedef struct __attribute__((packed)) zusb_msc_csw {
 
 #define ZUSB_MSC_CBW_SIGNATURE      0x43425355      // 'CBSU'
 
-// 指定したエンドポイントを使ってMSCにSCSIコマンドを送る
-int msc_scsi_sendcmd(int epin, int epout, const void *cmd, int cmd_len, int dir, void *buf, int size)
+// 指定したエンドポイントを使ってMSCにSCSIコマンドを送る (Bulk only transport)
+int msc_scsi_sendcmd_bbb(int epin, int epout, const void *cmd, int cmd_len, int dir, void *buf, int size)
 {
     int res = 0;
     zusb_msc_cbw_t *cbw = (zusb_msc_cbw_t *)&zusbbuf[0];
@@ -182,6 +204,48 @@ int msc_scsi_sendcmd(int epin, int epout, const void *cmd, int cmd_len, int dir,
     return res;
 }
 
+// 指定したエンドポイントを使ってMSCにSCSIコマンドを送る (CBI transport)
+int msc_scsi_sendcmd_cbi(int epin, int epout, int epint, const void *cmd, int cmd_len, int dir, void *buf, int size)
+{
+    int res = 0;
+
+    memset(&zusbbuf[0], 0, 12);
+    memcpy(&zusbbuf[0], cmd, cmd_len);
+    res = zusb_send_control(ZUSB_REQ_CS_IF_OUT, 0, 0, 0x00, 12, &zusbbuf[0]);
+    if (res < 0) {
+        return -1;
+    }
+
+    if (dir & 0x80) {
+        // device to host
+        zusb_set_ep_region(epin, &zusbbuf[0x100], size);
+        zusb_send_cmd(ZUSB_CMD_SUBMITXFER(epin));
+        while (!(zusb->stat & (1 << epin))) {
+        }
+        zusb->stat = (1 << epin);
+        res = zusb->pcount[epin];
+        memcpy(buf, &zusbbuf[0x100], res);
+    } else {
+        // host to device
+        memcpy(&zusbbuf[0x100], buf, size);
+        zusb_set_ep_region(epout, &zusbbuf[0x100], size);
+        zusb_send_cmd(ZUSB_CMD_SUBMITXFER(epout));
+        while (!(zusb->stat & (1 << epout))) {
+        }
+        zusb->stat = (1 << epout);
+        res = zusb->pcount[epout];
+    }
+
+    zusb_set_ep_region(epint, &zusbbuf[0], 2);
+    zusb_send_cmd(ZUSB_CMD_SUBMITXFER(epint));
+    while (!(zusb->stat & (1 << epint))) {
+    }
+    zusb->stat = (1 << epint);
+    res = zusb->pcount[epint];
+
+    return res;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 typedef struct __attribute__((packed)) scsi_inquiry {
@@ -191,6 +255,7 @@ typedef struct __attribute__((packed)) scsi_inquiry {
   uint8_t reserved2;
   uint8_t alloc_length;
   uint8_t control;
+  uint8_t reserved3[6];
 } scsi_inquiry_t;
 
 typedef struct __attribute__((packed)) scsi_inquiry_resp {
@@ -230,7 +295,7 @@ typedef struct __attribute__((packed)) scsi_read10 {
   uint8_t  control;
 } scsi_read10_t;
 
-void msc_test(int epin, int epout, int sector, int count)
+void msc_test(int epin, int epout, int epint, int sector, int count)
 {
     //////////////////////////////////////////////////
     // Inquiry test
@@ -241,7 +306,11 @@ void msc_test(int epin, int epout, int sector, int count)
     };
     scsi_inquiry_resp_t resp_inquiry;
 
-    msc_scsi_sendcmd(epin, epout, &cmd_inquiry, sizeof(cmd_inquiry), ZUSB_DIR_IN, &resp_inquiry, sizeof(resp_inquiry));
+    if (epint < 0) {
+        msc_scsi_sendcmd_bbb(epin, epout, &cmd_inquiry, sizeof(cmd_inquiry), ZUSB_DIR_IN, &resp_inquiry, sizeof(resp_inquiry));
+    } else {
+        msc_scsi_sendcmd_cbi(epin, epout, epint, &cmd_inquiry, sizeof(cmd_inquiry), ZUSB_DIR_IN, &resp_inquiry, sizeof(resp_inquiry));
+    }
 
     printf("Vendor ID: ");
     for (int i = 0; i < 8; i++) {
@@ -265,7 +334,11 @@ void msc_test(int epin, int epout, int sector, int count)
     };
     scsi_read_capacity10_resp_t resp_read_capacity;
 
-    msc_scsi_sendcmd(epin, epout, &cmd_read_capacity, sizeof(cmd_read_capacity), ZUSB_DIR_IN, &resp_read_capacity, sizeof(resp_read_capacity));
+    if (epint < 0) {
+        msc_scsi_sendcmd_bbb(epin, epout, &cmd_read_capacity, sizeof(cmd_read_capacity), ZUSB_DIR_IN, &resp_read_capacity, sizeof(resp_read_capacity));
+    } else {
+        msc_scsi_sendcmd_cbi(epin, epout, epint, &cmd_read_capacity, sizeof(cmd_read_capacity), ZUSB_DIR_IN, &resp_read_capacity, sizeof(resp_read_capacity));
+    }
 
     printf("last_lba = 0x%lx  block_size = %lu\n", resp_read_capacity.last_lba, resp_read_capacity.block_size);
 
@@ -293,14 +366,18 @@ void msc_test(int epin, int epout, int sector, int count)
         return;
     }
 
-
     while (count-- > 0) {
         if (sector > resp_read_capacity.last_lba) {
             break;
         }
 
         cmd_read10.lba = sector++;
-        msc_scsi_sendcmd(epin, epout, &cmd_read10, sizeof(cmd_read10), ZUSB_DIR_IN, block, block_size);
+        if (epint < 0) {
+            msc_scsi_sendcmd_bbb(epin, epout, &cmd_read10, sizeof(cmd_read10), ZUSB_DIR_IN, block, block_size);
+        } else {
+            msc_scsi_sendcmd_cbi(epin, epout, epint, &cmd_read10, sizeof(cmd_read10), ZUSB_DIR_IN, block, block_size);
+        }
+
         printf("\nLBA=0x%08lx\n", cmd_read10.lba);
         int i;
         char ascii[17];
