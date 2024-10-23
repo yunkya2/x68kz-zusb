@@ -33,6 +33,7 @@
 #include <x68k/dos.h>
 
 #include <zusb.h>
+#include <scsi_cmd.h>
 
 void msc_test(int epin, int epout, int epint, int sector, int count);
 
@@ -174,24 +175,26 @@ int msc_scsi_sendcmd_bbb(int epin, int epout, const void *cmd, int cmd_len, int 
     }
     zusb->stat = (1 << epout);
 
-    if (dir & 0x80) {
-        // device to host
-        zusb_set_ep_region(epin, &zusbbuf[0x100], size);
-        zusb_send_cmd(ZUSB_CMD_SUBMITXFER(epin));
-        while (!(zusb->stat & (1 << epin))) {
+    if (size > 0) {
+        if (dir & 0x80) {
+            // device to host
+            zusb_set_ep_region(epin, &zusbbuf[0x100], size);
+            zusb_send_cmd(ZUSB_CMD_SUBMITXFER(epin));
+            while (!(zusb->stat & (1 << epin))) {
+            }
+            zusb->stat = (1 << epin);
+            res = zusb->pcount[epin];
+            memcpy(buf, &zusbbuf[0x100], res);
+        } else {
+            // host to device
+            memcpy(&zusbbuf[0x100], buf, size);
+            zusb_set_ep_region(epout, &zusbbuf[0x100], size);
+            zusb_send_cmd(ZUSB_CMD_SUBMITXFER(epout));
+            while (!(zusb->stat & (1 << epout))) {
+            }
+            zusb->stat = (1 << epout);
+            res = zusb->pcount[epout];
         }
-        zusb->stat = (1 << epin);
-        res = zusb->pcount[epin];
-        memcpy(buf, &zusbbuf[0x100], res);
-    } else {
-        // host to device
-        memcpy(&zusbbuf[0x100], buf, size);
-        zusb_set_ep_region(epout, &zusbbuf[0x100], size);
-        zusb_send_cmd(ZUSB_CMD_SUBMITXFER(epout));
-        while (!(zusb->stat & (1 << epout))) {
-        }
-        zusb->stat = (1 << epout);
-        res = zusb->pcount[epout];
     }
 
     zusb_msc_csw_t *csw = (zusb_msc_csw_t *)&zusbbuf[256];
@@ -211,29 +214,30 @@ int msc_scsi_sendcmd_cbi(int epin, int epout, int epint, const void *cmd, int cm
 
     memset(&zusbbuf[0], 0, 12);
     memcpy(&zusbbuf[0], cmd, cmd_len);
-    res = zusb_send_control(ZUSB_REQ_CS_IF_OUT, 0, 0, 0x00, 12, &zusbbuf[0]);
-    if (res < 0) {
+    if (zusb_send_control(ZUSB_REQ_CS_IF_OUT, 0, 0, 0x00, 12, &zusbbuf[0]) < 0) {
         return -1;
     }
 
-    if (dir & 0x80) {
-        // device to host
-        zusb_set_ep_region(epin, &zusbbuf[0x100], size);
-        zusb_send_cmd(ZUSB_CMD_SUBMITXFER(epin));
-        while (!(zusb->stat & (1 << epin))) {
+    if (size > 0) {
+        if (dir & 0x80) {
+            // device to host
+            zusb_set_ep_region(epin, &zusbbuf[0x100], size);
+            zusb_send_cmd(ZUSB_CMD_SUBMITXFER(epin));
+            while (!(zusb->stat & (1 << epin))) {
+            }
+            zusb->stat = (1 << epin);
+            res = zusb->pcount[epin];
+            memcpy(buf, &zusbbuf[0x100], res);
+        } else {
+            // host to device
+            memcpy(&zusbbuf[0x100], buf, size);
+            zusb_set_ep_region(epout, &zusbbuf[0x100], size);
+            zusb_send_cmd(ZUSB_CMD_SUBMITXFER(epout));
+            while (!(zusb->stat & (1 << epout))) {
+            }
+            zusb->stat = (1 << epout);
+            res = zusb->pcount[epout];
         }
-        zusb->stat = (1 << epin);
-        res = zusb->pcount[epin];
-        memcpy(buf, &zusbbuf[0x100], res);
-    } else {
-        // host to device
-        memcpy(&zusbbuf[0x100], buf, size);
-        zusb_set_ep_region(epout, &zusbbuf[0x100], size);
-        zusb_send_cmd(ZUSB_CMD_SUBMITXFER(epout));
-        while (!(zusb->stat & (1 << epout))) {
-        }
-        zusb->stat = (1 << epout);
-        res = zusb->pcount[epout];
     }
 
     zusb_set_ep_region(epint, &zusbbuf[0], 2);
@@ -241,76 +245,43 @@ int msc_scsi_sendcmd_cbi(int epin, int epout, int epint, const void *cmd, int cm
     while (!(zusb->stat & (1 << epint))) {
     }
     zusb->stat = (1 << epint);
-    res = zusb->pcount[epint];
 
     return res;
 }
 
+
+int msc_scsi_sendcmd(int epin, int epout, int epint, const void *cmd, int cmd_len, int dir, void *buf, int size)
+{
+    if (epint < 0) {
+        return msc_scsi_sendcmd_bbb(epin, epout, cmd, cmd_len, dir, buf, size);
+    } else {
+        return msc_scsi_sendcmd_cbi(epin, epout, epint, cmd, cmd_len, dir, buf, size);
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////////
-
-typedef struct __attribute__((packed)) scsi_inquiry {
-  uint8_t cmd_code;     // 0x12
-  uint8_t reserved1;
-  uint8_t page_code;
-  uint8_t reserved2;
-  uint8_t alloc_length;
-  uint8_t control;
-  uint8_t reserved3[6];
-} scsi_inquiry_t;
-
-typedef struct __attribute__((packed)) scsi_inquiry_resp {
-  uint8_t peripheral_qual_type;
-  uint8_t is_removable;
-  uint8_t version;
-  uint8_t response_data_format;
-  uint8_t additional_length;
-  uint8_t flag_5;
-  uint8_t flag_6;
-  uint8_t flag_7;
-  uint8_t vendor_id[8];
-  uint8_t product_id[16];
-  uint8_t product_rev[4];
-} scsi_inquiry_resp_t;
-
-typedef struct __attribute__((packed)) scsi_read_capacity10 {
-  uint8_t  cmd_code;    // 0x25
-  uint8_t  reserved1;
-  uint32_t lba;
-  uint16_t reserved2;
-  uint8_t  partial_medium_indicator;
-  uint8_t  control;
-} scsi_read_capacity10_t;
-
-typedef struct __attribute__((packed)) scsi_read_capacity10_resp {
-  uint32_t last_lba;
-  uint32_t block_size;
-} scsi_read_capacity10_resp_t;
-
-typedef struct __attribute__((packed)) scsi_read10 {
-  uint8_t  cmd_code;    // 0x28
-  uint8_t  reserved;
-  uint32_t lba;
-  uint8_t  reserved2;
-  uint16_t block_count;
-  uint8_t  control;
-} scsi_read10_t;
 
 void msc_test(int epin, int epout, int epint, int sector, int count)
 {
     //////////////////////////////////////////////////
+    // Test unit ready test
+
+    scsi_test_unit_ready_t const cmd_test_unit_ready = {
+        .cmd_code     = SCSI_CMD_TEST_UNIT_READY
+    };
+
+    msc_scsi_sendcmd(epin, epout, epint, &cmd_test_unit_ready, sizeof(cmd_test_unit_ready), ZUSB_DIR_IN, NULL, 0);
+
+    //////////////////////////////////////////////////
     // Inquiry test
 
     scsi_inquiry_t const cmd_inquiry = {
-        .cmd_code     = 0x12,
+        .cmd_code     = SCSI_CMD_INQUIRY,
         .alloc_length = sizeof(scsi_inquiry_resp_t)
     };
     scsi_inquiry_resp_t resp_inquiry;
 
-    if (epint < 0) {
-        msc_scsi_sendcmd_bbb(epin, epout, &cmd_inquiry, sizeof(cmd_inquiry), ZUSB_DIR_IN, &resp_inquiry, sizeof(resp_inquiry));
-    } else {
-        msc_scsi_sendcmd_cbi(epin, epout, epint, &cmd_inquiry, sizeof(cmd_inquiry), ZUSB_DIR_IN, &resp_inquiry, sizeof(resp_inquiry));
-    }
+    msc_scsi_sendcmd(epin, epout, epint, &cmd_inquiry, sizeof(cmd_inquiry), ZUSB_DIR_IN, &resp_inquiry, sizeof(resp_inquiry));
 
     printf("Vendor ID: ");
     for (int i = 0; i < 8; i++) {
@@ -330,23 +301,47 @@ void msc_test(int epin, int epout, int epint, int sector, int count)
     // Read capacity test
 
     scsi_read_capacity10_t const cmd_read_capacity = {
-        .cmd_code     = 0x25,
+        .cmd_code     = SCSI_CMD_READ_CAPACITY_10,
     };
     scsi_read_capacity10_resp_t resp_read_capacity;
 
-    if (epint < 0) {
-        msc_scsi_sendcmd_bbb(epin, epout, &cmd_read_capacity, sizeof(cmd_read_capacity), ZUSB_DIR_IN, &resp_read_capacity, sizeof(resp_read_capacity));
-    } else {
-        msc_scsi_sendcmd_cbi(epin, epout, epint, &cmd_read_capacity, sizeof(cmd_read_capacity), ZUSB_DIR_IN, &resp_read_capacity, sizeof(resp_read_capacity));
-    }
+    msc_scsi_sendcmd(epin, epout, epint, &cmd_read_capacity, sizeof(cmd_read_capacity), ZUSB_DIR_IN, &resp_read_capacity, sizeof(resp_read_capacity));
 
     printf("last_lba = 0x%lx  block_size = %lu\n", resp_read_capacity.last_lba, resp_read_capacity.block_size);
+
+    //////////////////////////////////////////////////
+    // Read format capacities test (UFI only)
+
+    if (epint >= 0) {
+        uint32_t buf[256 / 4];
+        scsi_read_format_capacities_t const cmd_read_format_capacities = {
+            .cmd_code       = SCSI_CMD_READ_FORMAT_CAPACITIES,
+            .alloc_length   = sizeof(buf)
+        };
+        scsi_read_format_capacities_resp_t *resp = (scsi_read_format_capacities_resp_t *)&buf;
+
+        int r = msc_scsi_sendcmd(epin, epout, epint,
+                         &cmd_read_format_capacities, sizeof(cmd_read_format_capacities),
+                         ZUSB_DIR_IN,
+                         buf, sizeof(buf));
+
+        printf("capacity list length = %d\n", r);
+        if (r > 0) {
+            printf(" %s capacity: blocks = %lu  block_size = %u\n",
+                   resp->descriptor_type == 2 ? "formatted" : "maximum",
+                   resp->block_num, resp->block_size);
+            printf(" formattable capacities:\n");
+            for (int i = 1; i < r / 8; i++) {
+                printf("  blocks = %lu  block_size = %lu\n", buf[1 + i * 2], buf[2 + i * 2]);
+            }
+        }
+    }
 
     //////////////////////////////////////////////////
     // Read test
 
     scsi_read10_t cmd_read10 = {
-        .cmd_code     = 0x28,
+        .cmd_code     = SCSI_CMD_READ_10,
         .lba          = 0,
         .block_count  = 1
     };
@@ -372,11 +367,7 @@ void msc_test(int epin, int epout, int epint, int sector, int count)
         }
 
         cmd_read10.lba = sector++;
-        if (epint < 0) {
-            msc_scsi_sendcmd_bbb(epin, epout, &cmd_read10, sizeof(cmd_read10), ZUSB_DIR_IN, block, block_size);
-        } else {
-            msc_scsi_sendcmd_cbi(epin, epout, epint, &cmd_read10, sizeof(cmd_read10), ZUSB_DIR_IN, block, block_size);
-        }
+        msc_scsi_sendcmd(epin, epout, epint, &cmd_read10, sizeof(cmd_read10), ZUSB_DIR_IN, block, block_size);
 
         printf("\nLBA=0x%08lx\n", cmd_read10.lba);
         int i;
