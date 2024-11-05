@@ -30,6 +30,7 @@
 #define ATTR_PACKED   __attribute__ ((packed))
 
 #define SCSI_CMD_TEST_UNIT_READY          0x00
+#define SCSI_CMD_REZERO_UNIT              0x01
 #define SCSI_CMD_REQUEST_SENSE            0x03
 #define SCSI_CMD_FORMAT_UNIT              0x04
 #define SCSI_CMD_INQUIRY                  0x12
@@ -51,6 +52,14 @@ typedef struct ATTR_PACKED scsi_test_unit_ready {
   uint8_t _reserved1[3];
   uint8_t control;
 } scsi_test_unit_ready_t;
+
+// 0x01: REZERO UNIT
+
+typedef struct ATTR_PACKED scsi_rezero_unit {
+  uint8_t cmd_code;
+  uint8_t lun;
+  uint8_t _reserved1[4];
+} scsi_rezero_unit_t;
 
 // 0x03: REQUEST SENSE
 

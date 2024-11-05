@@ -417,7 +417,7 @@ $nn02       | ZUSB_EFAULT    | アドレス指定の誤り
 $nn03       | ZUSB_ENOTCONN  | まだデバイスに接続されていない
 $nn04       | ZUSB_ENOTINUSE | まだ使用中状態でないデバイス(STATUS.INUSE=0)にOPENCH以外のコマンドを発行した
 $nn05       | ZUSB_EINVAL    | コマンド引数指定の誤り
-$nn06       | ZUSB_ENXIO     | 指定されたデバイスIDのデバイスが存在しない
+$nn06       | ZUSB_ENODEV    | 指定されたデバイスIDのデバイスが存在しない
 $nn07       | ZUSB_EIO       | デバイスI/Oエラー
 
 ## チャネルの状態遷移

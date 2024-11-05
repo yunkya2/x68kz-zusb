@@ -88,7 +88,7 @@ extern "C" {
 #define ZUSB_ENOTCONN       3       // device not connected
 #define ZUSB_ENOTINUSE      4       // device not in use
 #define ZUSB_EINVAL         5       // invalid argument
-#define ZUSB_ENXIO          6       // no such device
+#define ZUSB_ENODEV         6       // no such device
 #define ZUSB_EIO            7       // device I/O error
 
 // registers
