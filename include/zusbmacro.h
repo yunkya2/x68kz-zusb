@@ -103,13 +103,18 @@ static inline int zusb_send_control(int bmRequestType, int bRequest, int wValue,
 
 //----------------------------------------------------------------------------
 
+static inline void zusb_set_channel(int ch)
+{
+    zusb = (volatile struct zusb_regs *)(ZUSB_BASEADDR + ch * ZUSB_SZ_CH);
+    zusbbuf = (uint8_t *)(ZUSB_BASEADDR + ch * ZUSB_SZ_CH + ZUSB_SZ_REGS);
+}
+
 static inline int zusb_open(void)
 {
     int ch;
     for (ch = 0; ch < ZUSB_N_CH; ch++) {
         uint16_t magic;
-        zusb = (volatile struct zusb_regs *)(ZUSB_BASEADDR + ch * ZUSB_SZ_CH);
-        zusbbuf = (uint8_t *)(ZUSB_BASEADDR + ch * ZUSB_SZ_CH + ZUSB_SZ_REGS);
+        zusb_set_channel(ch);
         if (_dos_bus_err((void *)zusb, &magic, 2) != 0 || magic != ZUSB_MAGIC) {
             return -1;      // ZUSB not exists
         }
@@ -127,8 +132,7 @@ static inline int zusb_open_protected(void)
     int ch;
     for (ch = ZUSB_N_CH - 1; ch >= 0; ch--) {
         uint16_t magic;
-        zusb = (volatile struct zusb_regs *)(ZUSB_BASEADDR + ch * ZUSB_SZ_CH);
-        zusbbuf = (uint8_t *)(ZUSB_BASEADDR + ch * ZUSB_SZ_CH + ZUSB_SZ_REGS);
+        zusb_set_channel(ch);
         if (_dos_bus_err((void *)zusb, &magic, 2) != 0 || magic != ZUSB_MAGIC) {
             return -1;      // ZUSB not exists
         }
@@ -301,6 +305,7 @@ static inline int zusb_connect_device(int devid,
             if (use_intf && (dintf->bAlternateSetting == 0)) {
                 zusb->param = (config << 8) | dintf->bInterfaceNumber;
                 if (zusb_send_cmd(ZUSB_CMD_CONNECT) < 0) {
+                    use_intf = 0;
                     break;
                 }
                 result++;
