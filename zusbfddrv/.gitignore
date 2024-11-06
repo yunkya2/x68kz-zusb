@@ -1,0 +1,8 @@
+*.o
+*.x
+*.elf
+*.sys
+*.bin
+*.SYS
+*.zip
+*.hds
