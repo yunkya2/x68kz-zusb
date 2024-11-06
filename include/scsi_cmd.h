@@ -202,4 +202,11 @@ typedef struct ATTR_PACKED scsi_mode_sense10 {
   uint8_t control;
 } scsi_mode_sense10_t;
 
+typedef struct ATTR_PACKED scsi_mode_sense10_resp {
+  uint16_t mode_data_length;
+  uint8_t  medium_type_code;
+  uint8_t  wp_flag;
+  uint8_t  _reserved1[4];
+} scsi_mode_sense10_resp_t;
+
 #endif  // _SCSI_CMD_H_
