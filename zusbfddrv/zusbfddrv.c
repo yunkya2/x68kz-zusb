@@ -83,6 +83,8 @@ jmp_buf jenv;
 
 int drives = 1;
 
+extern int8_t zusb_channels[MAX_DRIVE];
+
 struct drive {
   const struct dos_bpb **current_bpb;
   int medium_change_reported;
@@ -92,7 +94,6 @@ struct drive {
   struct iocs_time last_tm;
   int last_error;
 
-  int devch;
   int devid;
   int iManufacturer;
   int iProduct;
@@ -561,7 +562,7 @@ int interrupt(void)
       d = &drive[i];
       d->current_bpb = &bpbtable[i];
       initialize_drive();
-      if ((d->devch = zusb_open_protected()) < 0) {
+      if ((zusb_channels[i] = zusb_open_protected()) < 0) {
         _dos_print("ZUSB デバイスが見つかりません\r\n");
         return 0x700d;
       }
@@ -570,7 +571,7 @@ int interrupt(void)
     // (可能なら)デバイスへ接続する
     for (int i = 0; i < units; i++) {
       d = &drive[i];
-      zusb_set_channel(d->devch);
+      zusb_set_channel(zusb_channels[i]);
       if (connect_fdd() == 0) {
         char str[256];
         if (d->iManufacturer &&
@@ -611,7 +612,7 @@ int interrupt(void)
   //--------------------------------------------------------------------------
 
   d = &drive[req->unit];
-  zusb_set_channel(d->devch);
+  zusb_set_channel(zusb_channels[req->unit]);
   DPRINTF("[%d%d]", req->command, req->unit);
 
   if (d->devid < 0) {
