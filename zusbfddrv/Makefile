@@ -37,7 +37,7 @@ ifneq ($(DEBUG),)
 CFLAGS += -DDEBUG
 endif
 
-all: zusbfddrv.sys zusbfdboot.hds
+all: zusbfddrv.sys zusbfdboot.hds zusbfdformat.x
 
 zusbfdboot.hds: zusbfdboot.bin bootloader.bin HUMAN.SYS
 	./createhds.py $@ bootloader.bin HUMAN.SYS zusbfdboot.bin
@@ -56,6 +56,9 @@ zusbfddrv.sys: head.o zusbfddrv.o
 
 head_boot.o: head.S
 	$(AS) $(ASFLAGS) -o $@ -c $< -DCONFIG_BOOTDRIVER
+
+zusbfdformat.x: zusbfdformat.o
+	$(LD) -o $@ $^ -s
 
 zusbfddrv.o: zusbfddrv.h
 
