@@ -164,6 +164,7 @@ static const uint8_t bootsect[] = {
 //****************************************************************************
 
 uint32_t options = 0;
+char *volume_name = NULL;
 
 int format_num = 0;
 const format_info_t *format_info = &known_format[0];
@@ -350,7 +351,7 @@ static int get_current_capacity(void)
   cmd_read_format_capacities.alloc_length = sizeof(resp);
   if (msc_scsi_sendcmd(&cmd_read_format_capacities, sizeof(cmd_read_format_capacities),
                        ZUSB_DIR_IN, &resp, cmd_read_format_capacities.alloc_length) < 0) {
-    return -1;
+    return 0;
   }
   if (resp.descriptor_type != 2) {
     return -1;    // unformatted or no media
@@ -360,7 +361,7 @@ static int get_current_capacity(void)
     if (resp.block_size == known_format[i].block_size &&
         resp.block_num == known_format[i].block_num) {
       format_info = &known_format[i];
-      return i;
+      return 0;
     }
   }
   return -1;
@@ -521,6 +522,43 @@ static void list_capacities(void)
   }
 }
 
+static void set_volume_name(void)
+{
+  int fd;
+  struct dos_inpptr volbuf;
+
+  while (1) {
+    if (volume_name == NULL) {
+      printf("ボリューム名を半角２１文字以内で指定してください:");
+      fflush(stdout);
+      volbuf.max = 21;
+      _dos_kflushgs(&volbuf);
+      volume_name = volbuf.buffer;
+      printf("\n");
+
+      if (volbuf.length == 0) {
+        return;
+      }
+    }
+
+    char volname[30];
+    volname[0] = '@' + format_drive;
+    volname[1] = ':';
+    volname[2] = '\\';
+    strncpy(&volname[3], volume_name, 21);
+    volname[21 + 3] = '\0';
+    volume_name = NULL;
+
+    fd = _dos_create(volname, 0x0008);
+    if (fd >= 0) {
+      _dos_close(fd);
+      break;
+    }
+
+    printf("ボリューム名の指定に誤りがあります\n");
+  }
+}
+
 static void usage(void)
 {
   printf(
@@ -582,6 +620,9 @@ int main(int argc, char **argv)
         break;
       case 'V':
         options |= OP_VOL_SET;
+        if (argv[i][2] != '\0') {
+          volume_name = &argv[i][2];
+        }
         break;
       case 'Y':
         options |= OP_NO_PROMPT;
@@ -696,6 +737,12 @@ int main(int argc, char **argv)
   }
 
   printf("初期化を終了しました\n");
+
+  if (!(options & OP_PHYSICAL_FORMAT_ONLY)) {
+    if (options & OP_VOL_SET) {
+      set_volume_name();
+    }
+  }
 
   exit(0);
 }
