@@ -574,18 +574,11 @@ int interrupt(void)
       zusb_set_channel(zusb_channels[i]);
       if (connect_fdd() == 0) {
         char str[256];
-        if (d->iManufacturer &&
-          zusb_get_string_descriptor(str, sizeof(str), d->iManufacturer)) {
-          _dos_print("Manufacturer: ");
-          _dos_print(str);
-          _dos_print("  ");
-        }
         if (d->iProduct &&
           zusb_get_string_descriptor(str, sizeof(str), d->iProduct)) {
-          _dos_print("Product: ");
+          _dos_putchar('A' + *(uint8_t *)&req->fcb + i);
+          _dos_print(": ");
           _dos_print(str);
-        }
-        if (d->iManufacturer || d->iProduct) {
           _dos_print("\r\n");
         }
       }
@@ -700,6 +693,24 @@ int interrupt(void)
     DPRINTF("Ioctl out\r\n");
     break;
   }
+
+  case 0x13: /* special ioctl */
+  {
+    DPRINTF("Special ioctl\r\n");
+    switch (req->status >> 16) {
+    case 2:
+      d->medium_change_reported = false;
+      break;
+    case -1:
+    case 0:
+    case 1:
+    default:
+      err = 0x1003;   // Invalid command
+      break;
+    }
+    break;
+  }
+    break;
 
   default:
     DPRINTF("Invalid command\r\n");

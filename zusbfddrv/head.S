@@ -31,7 +31,7 @@
 
 devheader:
     .long   -1                  // link pointer
-    .word   0x4000              // device type
+    .word   0x4040              // device type
     .long   strategy            // strategy routine entry point
     .long   interrupt_asm       // interrupt routine entry point
 
