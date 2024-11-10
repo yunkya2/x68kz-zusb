@@ -559,6 +559,72 @@ static void set_volume_name(void)
   }
 }
 
+static int copy_one_file(char *name, int attr)
+{
+  char filename[30];
+  char buf[1024 * 16];
+  int len;
+
+  filename[0] = 'A' + _dos_curdrv();
+  filename[1] = ':';
+  filename[2] = '\\';
+  strcpy(&filename[3], name);
+
+  int fd1 = _dos_open(filename, 0x0000);
+  if (fd1 < 0) {
+    return -1;
+  }
+
+  filename[0] = '@' + format_drive;
+  int fd2 = _dos_create(filename, attr);
+  if (fd2 < 0) {
+    _dos_close(fd1);
+    return -1;
+  }
+
+  while ((len = _dos_read(fd1, buf, sizeof(buf))) > 0) {
+    int size;
+    if ((size = _dos_write(fd2, buf, len)) != len) {
+      len = -1;
+      break;
+    }
+  }
+
+  int date = _dos_filedate(fd1, 0);
+  _dos_filedate(fd2, date);
+  _dos_close(fd2);
+  _dos_close(fd1);
+
+  if (len < 0 || date < 0) {
+    _dos_chmod(filename, 0x0020);
+    _dos_delete(filename);
+    return -1;
+  }
+
+  return 0;
+}
+
+static void copy_system_files(void)
+{
+  struct dos_filbuf filbuf;
+  char filename[30];
+  filename[0] = 'A' + _dos_curdrv();
+  strcpy(&filename[1], ":\\*.*");
+
+  if (_dos_files(&filbuf, filename, 0x0004) < 0) {
+    printf("システムファイルが見つかりません\n");
+    return;
+  }
+  printf("%c:のシステムファイルを%c:に転送します\n", 'A' + _dos_curdrv(), '@' + format_drive);
+
+  do {
+    if (copy_one_file(filbuf.name, filbuf.atr) < 0) {
+      printf("システムファイルを転送できませんでした\n");
+      return;
+    }
+  } while (_dos_nfiles(&filbuf) >= 0);
+}
+
 static void usage(void)
 {
   printf(
@@ -741,6 +807,9 @@ int main(int argc, char **argv)
   if (!(options & OP_PHYSICAL_FORMAT_ONLY)) {
     if (options & OP_VOL_SET) {
       set_volume_name();
+    }
+    if (options & OP_SYS_COPY) {
+      copy_system_files();
     }
   }
 
