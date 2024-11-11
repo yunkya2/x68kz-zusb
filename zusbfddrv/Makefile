@@ -37,30 +37,47 @@ ifneq ($(DEBUG),)
 CFLAGS += -DDEBUG
 endif
 
-all: zusbfddrv.sys zusbfdboot.hds zusbfdformat.x
+all: zusbfddrv.sys zusbfdboot.hds zusbfdboot2.hds zusbfdformat.x
 
 zusbfdboot.hds: zusbfdboot.bin bootloader.bin HUMAN.SYS
 	./createhds.py $@ bootloader.bin HUMAN.SYS zusbfdboot.bin
 
+zusbfdboot2.hds: zusbfdboot2.bin bootloader.bin HUMAN.SYS
+	./createhds.py $@ bootloader.bin HUMAN.SYS zusbfdboot2.bin
+
 zusbfdboot.bin: zusbfdboot.sys
+	./fixupsys.py $< $@
+
+zusbfdboot2.bin: zusbfdboot2.sys
 	./fixupsys.py $< $@
 
 bootloader.bin: bootloader.o
 	$(OBJCOPY) -O binary $< $@
 
-zusbfdboot.sys: head_boot.o zusbfddrv.o
+zusbfdboot.sys: head_boot.o zusbfddrv_boot.o
+	$(LD) -o $@ $^ -nostartfiles -s
+
+zusbfdboot2.sys: head_boot.o zusbfddrv_boot2.o
 	$(LD) -o $@ $^ -nostartfiles -s
 
 zusbfddrv.sys: head.o zusbfddrv.o
 	$(LD) -o $@ $^ -nostartfiles -s
 
-head_boot.o: head.S
-	$(AS) $(ASFLAGS) -o $@ -c $< -DCONFIG_BOOTDRIVER
-
 zusbfdformat.x: zusbfdformat.o
 	$(LD) -o $@ $^ -s
 
+head_boot.o: head.S
+	$(AS) $(ASFLAGS) -o $@ -c $< -DCONFIG_BOOTDRIVER
+
+zusbfddrv_boot.o: zusbfddrv.c
+	$(CC) $(CFLAGS) -o $@ -c $< -DCONFIG_BOOTDRIVER
+
+zusbfddrv_boot2.o: zusbfddrv.c
+	$(CC) $(CFLAGS) -o $@ -c $< -DCONFIG_BOOTDRIVER -DCONFIG_DRIVES=2
+
 zusbfddrv.o: zusbfddrv.h
+zusbfddrv_boot.o: zusbfddrv.h
+zusbfddrv_boot2.o: zusbfddrv.h
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<

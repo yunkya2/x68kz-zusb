@@ -73,6 +73,11 @@ static const uint16_t sense_errcode[] = {
   0x700c,   // 15:Reserved           -> その他のエラー
 };
 
+#ifdef CONFIG_BOOTDRIVER
+#define _dos_putchar(...)
+#define _dos_print(...)
+#endif
+
 //****************************************************************************
 // Global variables
 //****************************************************************************
@@ -80,8 +85,6 @@ static const uint16_t sense_errcode[] = {
 struct dos_req_header *reqheader;   // Human68kからのリクエストヘッダ
 
 jmp_buf jenv;
-
-int drives = 1;
 
 extern int8_t zusb_channels[MAX_DRIVE];
 
@@ -540,7 +543,13 @@ int interrupt(void)
     _dos_print("\r\nX68000 Z USB FDD device driver version " GIT_REPO_VERSION "\r\n");
 
     // パラメータからユニット数を取得する (/u<ユニット数>)
+#ifndef CONFIG_DRIVES
     int units = 1;
+#else
+    int units = CONFIG_DRIVES;
+#endif
+
+#ifndef CONFIG_BOOTDRIVER
     char *p = (char *)req->status;
     while (*p != '\0') {
       if (*p == '/' || *p =='-') {
@@ -556,6 +565,7 @@ int interrupt(void)
       }
       p += strlen(p) + 1;
     }
+#endif
 
     // ドライブ数だけZUSBチャネルを確保する
     for (int i = 0; i < units; i++) {
@@ -589,6 +599,15 @@ int interrupt(void)
       }
       _dos_print("が利用可能です\r\n");
     }
+
+ #ifdef CONFIG_BOOTDRIVER
+    /* SCSI ROM のデバイスドライバ組み込み処理から渡される値
+     *「何番目のパーティションから起動するか」を Human68k のドライバ初期化処理に返す
+     * この値に基づいてどのドライブから起動するか (CONFIG.SYSをどのドライブから読むか) が決まる
+     */
+    extern uint8_t bootpart;
+    *(char *)&req->fcb = bootpart;
+#endif
 
     req->attr = units;
     req->status = (uint32_t)bpbtable;
