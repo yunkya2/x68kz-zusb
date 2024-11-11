@@ -572,28 +572,26 @@ int interrupt(void)
     for (int i = 0; i < units; i++) {
       d = &drive[i];
       zusb_set_channel(zusb_channels[i]);
+      char product[256];
+      product[0] = '\0';
       if (connect_fdd() == 0) {
-        char str[256];
-        if (d->iProduct &&
-          zusb_get_string_descriptor(str, sizeof(str), d->iProduct)) {
-          _dos_putchar('A' + *(uint8_t *)&req->fcb + i);
-          _dos_print(": ");
-          _dos_print(str);
-          _dos_print("\r\n");
+        if (d->iProduct) {
+          zusb_get_string_descriptor(product, sizeof(product), d->iProduct);
         }
       }
+      _dos_print("ドライブ ");
+      _dos_putchar('A' + *(uint8_t *)&req->fcb + i);
+      _dos_print(": でUSBフロッピーディスク");
+      if (product[0]) {
+        _dos_print(" (");
+        _dos_print(product);
+        _dos_print(") ");
+      }
+      _dos_print("が利用可能です\r\n");
     }
 
     req->attr = units;
     req->status = (uint32_t)bpbtable;
-
-    _dos_print("ドライブ");
-    _dos_putchar('A' + *(uint8_t *)&req->fcb);
-    if (units > 1) {
-      _dos_print(":-");
-      _dos_putchar('A' + *(uint8_t *)&req->fcb + units - 1);
-    }
-    _dos_print(":でUSBフロッピーディスクが利用可能です\r\n");
 
     extern char _end;
     req->addr = &_end;
