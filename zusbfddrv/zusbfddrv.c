@@ -278,6 +278,31 @@ int msc_scsi_reqsense(void)
   return sense_errcode[sense->sense_key & 0xf];
 }
 
+static void memcpy256(void *dst, const void *src, int len)
+{
+  __asm__ volatile(
+    "lsr #8,%2\n"
+    "subq.l #1,%2\n"
+    "1:\n"
+    "movem.l %0@+,%%d1-%%d7/%%a2-%%a5\n"
+    "movem.l %%d1-%%d7/%%a2-%%a5,%1@\n"       //  11*4 =  44bytes
+    "movem.l %0@+,%%d1-%%d7/%%a2-%%a5\n"
+    "movem.l %%d1-%%d7/%%a2-%%a5,%1@(44*1)\n" // +11*4 =  88bytes
+    "movem.l %0@+,%%d1-%%d7/%%a2-%%a5\n"
+    "movem.l %%d1-%%d7/%%a2-%%a5,%1@(44*2)\n" // +11*4 = 132bytes
+    "movem.l %0@+,%%d1-%%d7/%%a2-%%a5\n"
+    "movem.l %%d1-%%d7/%%a2-%%a5,%1@(44*3)\n" // +11*4 = 176bytes
+    "movem.l %0@+,%%d1-%%d7/%%a2-%%a5\n"
+    "movem.l %%d1-%%d7/%%a2-%%a5,%1@(44*4)\n" // +11*4 = 220bytes
+    "movem.l %0@+,%%d1-%%d7/%%a2-%%a3\n"
+    "movem.l %%d1-%%d7/%%a2-%%a3,%1@(44*5)\n" //  +9*4 = 256bytes
+    "lea.l %1@(256),%1\n"
+    "dbra %2,1b\n"
+    : : "a"(src), "a"(dst), "d"(len)
+    : "%%d1","%%d2","%%d3","%%d4","%%d5","%%d6","%%d7","%%a2","%%a3","%%a4","%%a5"
+  );
+}
+
 // 指定したエンドポイントを使ってMSCにSCSIコマンドを送る
 int msc_scsi_sendcmd(const void *cmd, int cmd_len, int dir, void *buf, int size)
 {
@@ -302,7 +327,7 @@ int msc_scsi_sendcmd(const void *cmd, int cmd_len, int dir, void *buf, int size)
     size -= len;
 
     if (!dir) {   // host to device - 書き込みデータをUSBバッファに転送
-      _iocs_dmamove(&zusbbuf[0x100], buf, 0x85, len);
+      memcpy(&zusbbuf[0x100], buf, len);
       buf += len;
       total += len;
     }
@@ -320,7 +345,7 @@ int msc_scsi_sendcmd(const void *cmd, int cmd_len, int dir, void *buf, int size)
       size -= len;
 
       if (!dir) {   // host to device - 書き込みデータをUSBバッファに転送
-        _iocs_dmamove(&zusbbuf[side ? 0x800 : 0x100], buf, 0x85, len);
+        memcpy256(&zusbbuf[side ? 0x800 : 0x100], buf, len);
         buf += len;
         total += len;
       }
@@ -341,7 +366,7 @@ int msc_scsi_sendcmd(const void *cmd, int cmd_len, int dir, void *buf, int size)
       }
 
       if (dir && res > 0) {    // device to host - 読み出したデータをUSBバッファから転送
-        _iocs_dmamove(buf, &zusbbuf[side ? 0x800 : 0x100], 0x85, res);
+        memcpy256(buf, &zusbbuf[side ? 0x800 : 0x100], res);
         buf += res;
         total += res;
       }
@@ -359,7 +384,7 @@ int msc_scsi_sendcmd(const void *cmd, int cmd_len, int dir, void *buf, int size)
     }
 
     if (dir && res > 0) {  // device to host - 読み出したデータをUSBバッファから転送
-      _iocs_dmamove(buf, &zusbbuf[side ? 0x800 : 0x100], 0x85, res);
+      memcpy(buf, &zusbbuf[side ? 0x800 : 0x100], res);
     }
     if (total >= 0) {
       total += res;
