@@ -614,9 +614,9 @@ int interrupt(void)
           zusb_get_string_descriptor(product, sizeof(product), d->iProduct);
         }
       }
-      _dos_print("ドライブ ");
+      _dos_print("ドライブ");
       _dos_putchar('A' + *(uint8_t *)&req->fcb + i);
-      _dos_print(": でUSBフロッピーディスク");
+      _dos_print(":でUSBフロッピーディスク");
       if (product[0]) {
         _dos_print(" (");
         _dos_print(product);

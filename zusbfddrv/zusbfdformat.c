@@ -403,14 +403,14 @@ static void dump_disk(int sector, int count)
 
 static int physical_format(void)
 {
-  scsi_format_unit_t cmd_format_unit = {
+  scsi_format_unit_ufi_t cmd_format_unit = {
     .cmd_code           = SCSI_CMD_FORMAT_UNIT,
     .defect_list_format = 0x17,
     .track_number       = 0,
     .interleave         = 0,
-    .alloc_length       = sizeof(scsi_format_unit_param_t),
+    .alloc_length       = sizeof(scsi_format_unit_ufi_param_t),
   };
-  scsi_format_unit_param_t param = {
+  scsi_format_unit_ufi_param_t param = {
     .flag                = 0xb0,
     .defect_list_length = 8,
   };
