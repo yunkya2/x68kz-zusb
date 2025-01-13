@@ -37,12 +37,16 @@ ifneq ($(DEBUG),)
 CFLAGS += -DDEBUG
 endif
 
-all: zusbscsi.sys
+all: zusbscsi.sys zusbmodrv.sys
 
 zusbscsi.sys: head_scsi.o zusbscsi.o scsiiocs.o
 	$(LD) -o $@ $^ -nostartfiles -s
 
+zusbmodrv.sys: head_modrv.o zusbmodrv.o
+	$(LD) -o $@ $^ -nostartfiles -s
+
 zusbscsi.o: zusbscsi.h
+zusbmodrv.o: zusbscsi.h
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
