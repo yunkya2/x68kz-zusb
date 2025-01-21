@@ -279,7 +279,7 @@ typedef struct zusb_endpoint_config {
 
 static inline int zusb_connect_device(int devid,
                                       int config, int devclass, int subclass, int protocol,
-                                      zusb_endpoint_config_t epcfg[ZUSB_N_EP])
+                                      zusb_endpoint_config_t epcfg[])
 {
     int result = 0;
     int use_config = 0;
@@ -325,8 +325,8 @@ static inline int zusb_connect_device(int devid,
                 if (ncfg == cfg) {
                     break;
                 } else if (ncfg == 0xffff) {
-                    if (((dendp->bEndpointAddress & ZUSB_DIR_MASK) == epcfg[i].address) &&
-                        ((dendp->bmAttributes & ZUSB_XFER_MASK) == epcfg[i].attribute)) {
+                    if (((dendp->bEndpointAddress & ZUSB_DIR_MASK) == (epcfg[i].address & ZUSB_DIR_MASK)) &&
+                        ((dendp->bmAttributes & ZUSB_XFER_MASK) == (epcfg[i].attribute & ZUSB_XFER_MASK))) {
                         zusb->pcfg[i] = cfg;
                         zusb->pcount[i] = zusb_le16toh(dendp->wMaxPacketSize);
                         epcfg[i].address = dendp->bEndpointAddress;
