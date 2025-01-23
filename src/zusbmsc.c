@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 
     _iocs_b_super(0);
 
-    if (zusb_open() < 0) {
+    if (zusb_open(0) < 0) {
         printf("ZUSB デバイスが見つかりません\n");
         exit(1);
     }
@@ -96,7 +96,7 @@ int main(int argc, char **argv)
     // MSCデバイスに接続する
 
     {
-        zusb_open();
+        zusb_open(0);
         zusb_endpoint_config_t epcfg[ZUSB_N_EP] = {
             { ZUSB_DIR_IN,  ZUSB_XFER_BULK, 0 },
             { ZUSB_DIR_OUT, ZUSB_XFER_BULK, 0 },
@@ -113,7 +113,7 @@ int main(int argc, char **argv)
         }
     }
     {
-        zusb_open();
+        zusb_open(0);
         zusb_endpoint_config_t epcfg[ZUSB_N_EP] = {
             { ZUSB_DIR_IN,  ZUSB_XFER_BULK, 0 },
             { ZUSB_DIR_OUT, ZUSB_XFER_BULK, 0 },

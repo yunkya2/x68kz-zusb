@@ -114,10 +114,9 @@ static inline void zusb_set_channel(int ch)
     zusbbuf = (uint8_t *)(ZUSB_BASEADDR + ch * ZUSB_SZ_CH + ZUSB_SZ_REGS);
 }
 
-static inline int zusb_open(void)
+static inline int zusb_open(int ch)
 {
-    int ch;
-    for (ch = 0; ch < ZUSB_N_CH; ch++) {
+    for (; ch < ZUSB_N_CH; ch++) {
         uint16_t magic;
         zusb_set_channel(ch);
         if (_dos_bus_err((void *)zusb, &magic, 2) != 0 || magic != ZUSB_MAGIC) {

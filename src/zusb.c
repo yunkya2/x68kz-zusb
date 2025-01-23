@@ -996,7 +996,7 @@ int main(int argc, char **argv)
 
     _iocs_b_super(0);
 
-    if (zusb_open() < 0) {
+    if (zusb_open(0) < 0) {
         printf("ZUSB デバイスが見つかりません\n");
         exit(1);
     }

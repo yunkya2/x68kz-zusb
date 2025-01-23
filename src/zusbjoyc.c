@@ -173,7 +173,7 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    int res = stay ? zusb_open_protected() : zusb_open();
+    int res = stay ? zusb_open_protected() : zusb_open(0);
     if (res < 0) {
         printf("ZUSB デバイスが見つかりません\n");
         exit(1);
