@@ -139,7 +139,7 @@ void DPRINTF(char *fmt, ...)
 // USB device connection
 //----------------------------------------------------------------------------
 
-static const zusb_endpoint_config_t epcfg_tmpl[ZUSB_N_EP] = {
+static zusb_endpoint_config_t epcfg[ZUSB_N_EP] = {
     { ZUSB_DIR_IN,  ZUSB_XFER_BULK, 0 },
     { ZUSB_DIR_OUT, ZUSB_XFER_BULK, 0 },
     { ZUSB_DIR_IN,  ZUSB_XFER_INTERRUPT, 0 },
@@ -154,13 +154,11 @@ static const zusb_endpoint_config_t epcfg_tmpl[ZUSB_N_EP] = {
 static int connect_fdd(void)
 {
   int devid = 0;
-  zusb_endpoint_config_t epcfg[ZUSB_N_EP];
 
   DPRINTF("connect_fdd: ");
 
   // MSC, UFI command set, CBI transport
   while (devid = zusb_find_device_with_devclass(ZUSB_CLASS_MSC, 0x04, 0x00, devid)) {
-    zusb->devid = devid;
     zusb_desc_device_t *ddev = (zusb_desc_device_t *)zusbbuf;
     if (zusb_get_descriptor(zusbbuf) > 0 &&
         ddev->bDescriptorType == ZUSB_DESC_DEVICE) {
@@ -168,7 +166,6 @@ static int connect_fdd(void)
       d->iProduct = ddev->iProduct;
     }
 
-    memcpy(epcfg, epcfg_tmpl, sizeof(epcfg));
     if (zusb_connect_device(devid, 1, ZUSB_CLASS_MSC, 0x04, 0x00, epcfg) > 0) {
       d->devid = devid;
       // エンドポイントパイプの設定
@@ -222,14 +219,12 @@ static int devcheck(int res)
 // UFI SCSIコマンドを送信する
 int send_ufi_scsicmd(void *cmd)
 {
-  zusb->err = 0;
   return devcheck(zusb_send_control(ZUSB_REQ_CS_IF_OUT, 0, 0, 0x00, 12, cmd));
 }
 
 // USBデータ転送を行って転送完了まで待つ
 int send_ufi_submit_wait(int epno, void *buf, int count)
 {
-  zusb->err = 0;
   zusb_set_ep_region(epno, buf, count);
   if (devcheck(zusb_send_cmd(ZUSB_CMD_SUBMITXFER(epno))) < 0 || waitep(epno) < 0) {
     return -1;
@@ -240,7 +235,6 @@ int send_ufi_submit_wait(int epno, void *buf, int count)
 // USBデータ転送を行う
 int send_ufi_zusbcmd(int cmd)
 {
-  zusb->err = 0;
   return devcheck(zusb_send_cmd(cmd));
 }
 

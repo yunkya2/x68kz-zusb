@@ -222,14 +222,12 @@ static int devcheck(int res)
 // UFI SCSIコマンドを送信する
 int send_ufi_scsicmd(void *cmd)
 {
-  zusb->err = 0;
   return devcheck(zusb_send_control(ZUSB_REQ_CS_IF_OUT, 0, 0, 0x00, 12, cmd));
 }
 
 // USBデータ転送を行って転送完了まで待つ
 int send_ufi_submit_wait(int epno, void *buf, int count)
 {
-  zusb->err = 0;
   zusb_set_ep_region(epno, buf, count);
   if (devcheck(zusb_send_cmd(ZUSB_CMD_SUBMITXFER(epno))) < 0 || waitep(epno) < 0) {
     return -1;
@@ -240,7 +238,6 @@ int send_ufi_submit_wait(int epno, void *buf, int count)
 // USBデータ転送を行う
 int send_ufi_zusbcmd(int cmd)
 {
-  zusb->err = 0;
   return devcheck(zusb_send_cmd(cmd));
 }
 

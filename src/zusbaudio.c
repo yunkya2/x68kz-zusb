@@ -72,14 +72,13 @@ int main(int argc, char **argv)
         printf("UAC devices\n");
         devid = 0;
         while ((devid = zusb_find_device_with_devclass(ZUSB_CLASS_AUDIO, -1, -1, devid))) {
-            zusb->devid = devid;
             while (zusb_get_descriptor(zusbbuf) > 0) {
                 char str[256];
                 zusb_desc_device_t *ddev = (zusb_desc_device_t *)zusbbuf;
                 if (ddev->bDescriptorType != ZUSB_DESC_DEVICE) {
                     break;
                 }
-                printf(" Device:%3d ", zusb->devid);
+                printf(" Device:%3d ", devid);
                 printf("ID:0x%04x-0x%04x", zusb_le16toh(ddev->idVendor), zusb_le16toh(ddev->idProduct));
                 if (ddev->iManufacturer &&
                     zusb_get_string_descriptor(str, sizeof(str), ddev->iManufacturer)) {
@@ -133,8 +132,8 @@ void audio_test(int epout, int samplerate, int volume, char *filename)
 
     // Class-Specific Interface Descriptor から設定値を取得する
 
-    zusb->devid = zusb->devid;
     int current_if;
+    zusb_rewind_descriptor();
     while (zusb_get_descriptor(zusbbuf) > 0) {
         uint8_t *desc = zusbbuf;
         if (desc[1] == ZUSB_DESC_CONFIGURATION) {

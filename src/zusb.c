@@ -57,7 +57,7 @@ int disp_descriptors(int devid, int type, uint8_t *desc, void *arg)
         return 0;
     }
     if (type == ZUSB_DESC_DEVICE) {
-        printf("Device:%3d\n", zusb->devid);
+        printf("Device:%3d\n", devid);
     }
 
     if (a->verbose) {
@@ -192,7 +192,7 @@ int disp_device_descriptor(int devid, int type, uint8_t *desc, void *arg)
         printf("\n");
     }
 
-    printf("Device:%3d ", zusb->devid);
+    printf("Device:%3d ", devid);
     printf("ID:0x%04x-0x%04x", zusb_le16toh(ddev->idVendor), zusb_le16toh(ddev->idProduct));
     if (ddev->iManufacturer &&
         zusb_get_string_descriptor(str, sizeof(str), ddev->iManufacturer)) {

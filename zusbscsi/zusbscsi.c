@@ -51,7 +51,7 @@
 #define EP_BULK_IN    0
 #define EP_BULK_OUT   1
 
-static const zusb_endpoint_config_t epcfg_tmpl[ZUSB_N_EP] = {
+static zusb_endpoint_config_t epcfg[ZUSB_N_EP] = {
     { ZUSB_DIR_IN,  ZUSB_XFER_BULK, 0 },
     { ZUSB_DIR_OUT, ZUSB_XFER_BULK, 0 },
     { 0, 0, -1 },
@@ -166,7 +166,6 @@ static int devcheck(int res)
 // USBデータ転送を行って転送完了まで待つ
 static int send_submit_wait(int epno, void *buf, int count)
 {
-  zusb->err = 0;
   zusb_set_ep_region(epno, buf, count);
   zusb_send_cmd(ZUSB_CMD_SUBMITXFER(epno));
   return devcheck(waitep(epno));
@@ -203,14 +202,12 @@ static int receive_csw(void)
 static int connect_msc(void)
 {
   int devid = 0;
-  zusb_endpoint_config_t epcfg[ZUSB_N_EP];
 
   DPRINTF("connect_msc:\r\n");
 
   // MSC, SCSI transparent command set, Bulk-only transport
   while (devid = zusb_find_device_with_devclass(ZUSB_CLASS_MSC, 0x06, 0x50, devid)) {
     DPRINTF("devid=%d ", devid);
-    zusb->devid = devid;    // 見つかったデバイスIDのディスクリプタを読み直す
     zusb_desc_device_t *ddev = (zusb_desc_device_t *)zusbbuf;
     if (zusb_get_descriptor(zusbbuf) > 0 &&
         ddev->bDescriptorType == ZUSB_DESC_DEVICE) {
@@ -225,7 +222,6 @@ static int connect_msc(void)
     }
 
     // 見つかったデバイスに接続する
-    memcpy(epcfg, epcfg_tmpl, sizeof(epcfg));
     if (zusb_connect_device(devid, 1, ZUSB_CLASS_MSC, 0x06, 0x50, epcfg) <= 0) {
       DPRINTF("connectinon failure. skip\r\n");
       continue;

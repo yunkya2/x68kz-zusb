@@ -65,14 +65,13 @@ int main(int argc, char **argv)
         printf("HID devices\n");
         devid = 0;
         while ((devid = zusb_find_device_with_devclass(ZUSB_CLASS_HID, -1, -1, devid))) {
-            zusb->devid = devid;
             while (zusb_get_descriptor(zusbbuf) > 0) {
                 char str[256];
                 zusb_desc_device_t *ddev = (zusb_desc_device_t *)zusbbuf;
                 if (ddev->bDescriptorType != ZUSB_DESC_DEVICE) {
                     break;
                 }
-                printf(" Device:%3d ", zusb->devid);
+                printf(" Device:%3d ", devid);
                 printf("ID:0x%04x-0x%04x", zusb_le16toh(ddev->idVendor), zusb_le16toh(ddev->idProduct));
                 if (ddev->iManufacturer &&
                     zusb_get_string_descriptor(str, sizeof(str), ddev->iManufacturer)) {

@@ -292,7 +292,6 @@ static int delete_proto_handler(int proto)
 
 static void ax_cmd(int req, int cmd, int value, int index, int size, void *data)
 {
-  zusb->stat = ZUSB_STAT_ERROR;
   zusb_send_control(req, cmd, value, index, size, data);
   if (zusb->stat & ZUSB_STAT_ERROR) {
     DPRINTF("ax_cmd error\r\n");
@@ -662,8 +661,7 @@ static int etherinit(void)
     return -1;
   }
 
-  // 見つかったデバイスIDのディスクリプタを読み直してプロダクトIDを得る
-  zusb->devid = devid;
+  // 見つかったデバイスのプロダクトIDを得る
   zusb_desc_device_t *ddev = (zusb_desc_device_t *)zusbbuf;
   if (zusb_get_descriptor(zusbbuf) > 0 &&
       ddev->bDescriptorType == ZUSB_DESC_DEVICE) {
