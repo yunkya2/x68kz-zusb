@@ -91,6 +91,11 @@ static inline int zusb_get_descriptor(uint8_t *buf)
     return len;
 }
 
+static inline void zusb_rewind_descriptor(void)
+{
+    zusb->devid = zusb->devid;
+}
+
 static inline int zusb_send_control(int bmRequestType, int bRequest, int wValue, int wIndex, int wLength, void *data)
 {
     zusb->param = (bmRequestType<< 8) | bRequest;
@@ -198,7 +203,6 @@ typedef int zusb_match_func(int devid, int type, uint8_t *desc, void *arg);
 
 static inline int zusb_find_device(zusb_match_func *fn, void *arg, int pdev)
 {
-    int result = 0;
     if (zusb_send_cmd(ZUSB_CMD_GETDEV) < 0) {
         return -1;
     }
@@ -218,9 +222,15 @@ static inline int zusb_find_device(zusb_match_func *fn, void *arg, int pdev)
 
     while (zusb->devid != 0) {
         while (zusb_get_descriptor(zusbbuf) > 0) {
-            if (result == 0 && fn(zusb->devid, zusbbuf[1], zusbbuf, arg)) {
-                result = zusb->devid;
-                break;
+            if (fn(zusb->devid, zusbbuf[1], zusbbuf, arg)) {
+                int res = zusb->devid;
+                do {
+                    if (zusb_send_cmd(ZUSB_CMD_NEXTDEV) < 0) {
+                        break;
+                    }
+                } while (zusb->devid != 0);
+                zusb->devid = res;
+                return res;
             }
         }
 
@@ -228,7 +238,7 @@ static inline int zusb_find_device(zusb_match_func *fn, void *arg, int pdev)
             return -1;
         }
     }
-    return result;
+    return 0;
 }
 
 static inline int zusb_find_device_with_vid_pid(int vid, int pid, int pdev)

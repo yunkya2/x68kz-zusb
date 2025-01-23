@@ -209,6 +209,15 @@ ZUSB による USB デバイス制御のための API について説明しま�
     * -1: コマンドでエラーが発生した
     * それ以外: 取得できたディスクリプタの長さ
 
+* void zusb_rewind_descriptor(void);
+  * 説明
+    * zusb_get_descriptor() で取得するディスクリプタを先頭に戻します。
+    * zusb_get_descriptor() は呼び出すたびにディスクリプタを順次取得して行きますが、この API を呼ぶことでデバイスの最初のディスクリプタから再度取得するようになります。
+  * 引数
+    * なし
+  * 返り値
+    * なし
+
 * int zusb_get_string_descriptor(char *str, int len, int index);
   * 説明
     * USB デバイスのストリングディスクリプタを取得します。
