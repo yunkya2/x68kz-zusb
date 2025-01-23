@@ -31,9 +31,9 @@
  extern "C" {
 #endif
 
-//----------------------------------------------------------------------------
-// Little Endian Macros
-//----------------------------------------------------------------------------
+/*----------------------------------------------------------------------------
+ * Little Endian Macros
+ *--------------------------------------------------------------------------*/
 
 typedef uint16_t ule16_t;
 typedef uint32_t ule32_t;
@@ -47,9 +47,9 @@ typedef uint32_t ule32_t;
 #define zusb_le32toh(u32)   (zusb_bswap32(u32))
 
 
-//----------------------------------------------------------------------------
-// USB Constants
-//----------------------------------------------------------------------------
+/*----------------------------------------------------------------------------
+ * USB Constants
+ *--------------------------------------------------------------------------*/
 
 #define ZUSB_DIR_OUT                  0x00
 #define ZUSB_DIR_IN                   0x80
@@ -82,9 +82,9 @@ typedef uint32_t ule32_t;
 #define ZUSB_CLASS_APP_SPECIFIC         0xfe
 #define ZUSB_CLASS_VENDOR_SPECIFIC      0xff
 
-//----------------------------------------------------------------------------
-// USB Control Request
-//----------------------------------------------------------------------------
+/*----------------------------------------------------------------------------
+ * USB Control Request
+ *--------------------------------------------------------------------------*/
 
 #define ZUSB_REQ_DIR_OUT              0x00
 #define ZUSB_REQ_DIR_IN               0x80
@@ -114,23 +114,23 @@ typedef uint32_t ule32_t;
 #define ZUSB_REQ_SET_INTERFACE        11
 #define ZUSB_REQ_SYNCH_FRAME          12
 
-// Class Specific Request
+/* Class Specific Request */
 #define ZUSB_REQ_CS_IF_OUT      (ZUSB_REQ_DIR_OUT|ZUSB_REQ_TYPE_CLASS|ZUSB_REQ_RCPT_INTERFACE)
 #define ZUSB_REQ_CS_IF_IN       (ZUSB_REQ_DIR_IN |ZUSB_REQ_TYPE_CLASS|ZUSB_REQ_RCPT_INTERFACE)
 #define ZUSB_REQ_CS_EP_OUT      (ZUSB_REQ_DIR_OUT|ZUSB_REQ_TYPE_CLASS|ZUSB_REQ_RCPT_ENDPOINT)
 #define ZUSB_REQ_CS_EP_IN       (ZUSB_REQ_DIR_IN |ZUSB_REQ_TYPE_CLASS|ZUSB_REQ_RCPT_ENDPOINT)
 
 typedef struct __attribute__((packed)) zusb_control_request_t {
-  uint8_t bmRequestType;        // +0
-  uint8_t bRequest;             // +1
-  ule16_t wValue;               // +2
-  ule16_t wIndex;               // +4
-  ule16_t wLength;              // +6
+  uint8_t bmRequestType;        /* +0 */
+  uint8_t bRequest;             /* +1 */
+  ule16_t wValue;               /* +2 */
+  ule16_t wIndex;               /* +4 */
+  ule16_t wLength;              /* +6 */
 } zusb_control_request_t;
 
-//----------------------------------------------------------------------------
-// USB Descriptors
-//----------------------------------------------------------------------------
+/*----------------------------------------------------------------------------
+ * USB Descriptors
+ *--------------------------------------------------------------------------*/
 
 #define ZUSB_DESC_DEVICE                  0x01
 #define ZUSB_DESC_CONFIGURATION           0x02
@@ -144,86 +144,86 @@ typedef struct __attribute__((packed)) zusb_control_request_t {
 #define ZUSB_DESC_CS_INTERFACE            0x24
 #define ZUSB_DESC_CS_ENDPOINT             0x25
 
-// USB Descriptor Common Header
+/* USB Descriptor Common Header */
 typedef struct __attribute__((packed)) zusb_desc_header {
-  uint8_t bLength;              // +0
-  uint8_t bDescriptorType;      // +1
+  uint8_t bLength;              /* +0 */
+  uint8_t bDescriptorType;      /* +1 */
 } zusb_desc_header_t;
 
-// USB Device Descriptor (0x01)
+/* USB Device Descriptor (0x01) */
 typedef struct __attribute__((packed)) zusb_desc_device_t {
-  uint8_t bLength;              // +0
-  uint8_t bDescriptorType;      // +1
-  ule16_t bcdUSB;               // +2
-  uint8_t bDeviceClass;         // +4
-  uint8_t bDeviceSubClass;      // +5
-  uint8_t bDeviceProtocol;      // +6
-  uint8_t bMaxPacketSize0;      // +7
-  ule16_t idVendor;             // +8
-  ule16_t idProduct;            // +10
-  ule16_t bcdDevice;            // +12
-  uint8_t iManufacturer;        // +14
-  uint8_t iProduct;             // +15
-  uint8_t iSerialNumber;        // +16
-  uint8_t bNumConfigurations;   // +17
+  uint8_t bLength;              /* +0 */
+  uint8_t bDescriptorType;      /* +1 */
+  ule16_t bcdUSB;               /* +2 */
+  uint8_t bDeviceClass;         /* +4 */
+  uint8_t bDeviceSubClass;      /* +5 */
+  uint8_t bDeviceProtocol;      /* +6 */
+  uint8_t bMaxPacketSize0;      /* +7 */
+  ule16_t idVendor;             /* +8 */
+  ule16_t idProduct;            /* +10 */
+  ule16_t bcdDevice;            /* +12 */
+  uint8_t iManufacturer;        /* +14 */
+  uint8_t iProduct;             /* +15 */
+  uint8_t iSerialNumber;        /* +16 */
+  uint8_t bNumConfigurations;   /* +17 */
 } zusb_desc_device_t;
 
-// USB Configuration Descriptor (0x02)
+/* USB Configuration Descriptor (0x02) */
 typedef struct __attribute__((packed)) zusb_desc_configuration {
-  uint8_t bLength;              // +0
-  uint8_t bDescriptorType;      // +1
-  ule16_t wTotalLength;         // +2
-  uint8_t bNumInterfaces;       // +4
-  uint8_t bConfigurationValue;  // +5
-  uint8_t iConfiguration;       // +6
-  uint8_t bmAttributes;         // +7
-  uint8_t bMaxPower;            // +8
+  uint8_t bLength;              /* +0 */
+  uint8_t bDescriptorType;      /* +1 */
+  ule16_t wTotalLength;         /* +2 */
+  uint8_t bNumInterfaces;       /* +4 */
+  uint8_t bConfigurationValue;  /* +5 */
+  uint8_t iConfiguration;       /* +6 */
+  uint8_t bmAttributes;         /* +7 */
+  uint8_t bMaxPower;            /* +8 */
 } zusb_desc_configuration_t;
 
-// USB String Descriptor (0x03)
+/* USB String Descriptor (0x03) */
 typedef struct __attribute__((packed)) zusb_desc_string {
-  uint8_t bLength;              // +0
-  uint8_t bDescriptorType;      // +1
-  ule16_t bString[];            // +2
+  uint8_t bLength;              /* +0 */
+  uint8_t bDescriptorType;      /* +1 */
+  ule16_t bString[];            /* +2 */
 } zusb_desc_string_t;
 
-// USB Interface Descriptor (0x04)
+/* USB Interface Descriptor (0x04) */
 typedef struct __attribute__((packed)) zusb_desc_interface {
-  uint8_t bLength;              // +0
-  uint8_t bDescriptorType;      // +1
-  uint8_t bInterfaceNumber;     // +2
-  uint8_t bAlternateSetting;    // +3
-  uint8_t bNumEndpoints;        // +4
-  uint8_t bInterfaceClass;      // +5
-  uint8_t bInterfaceSubClass;   // +6
-  uint8_t bInterfaceProtocol;   // +7
-  uint8_t iInterface;           // +8
+  uint8_t bLength;              /* +0 */
+  uint8_t bDescriptorType;      /* +1 */
+  uint8_t bInterfaceNumber;     /* +2 */
+  uint8_t bAlternateSetting;    /* +3 */
+  uint8_t bNumEndpoints;        /* +4 */
+  uint8_t bInterfaceClass;      /* +5 */
+  uint8_t bInterfaceSubClass;   /* +6 */
+  uint8_t bInterfaceProtocol;   /* +7 */
+  uint8_t iInterface;           /* +8 */
 } zusb_desc_interface_t;
 
-// USB Endpoint Descriptor (0x05)
+/* USB Endpoint Descriptor (0x05) */
 typedef struct __attribute__((packed)) zusb_desc_endpoint {
-  uint8_t bLength;              // +0
-  uint8_t bDescriptorType;      // +1
-  uint8_t bEndpointAddress;     // +2
-  uint8_t bmAttributes;         // +3
-  ule16_t wMaxPacketSize;       // +4
-  uint8_t bInterval;            // +6
+  uint8_t bLength;              /* +0 */
+  uint8_t bDescriptorType;      /* +1 */
+  uint8_t bEndpointAddress;     /* +2 */
+  uint8_t bmAttributes;         /* +3 */
+  ule16_t wMaxPacketSize;       /* +4 */
+  uint8_t bInterval;            /* +6 */
 } zusb_desc_endpoint_t;
 
-/// USB Interface Association Descriptor (0x0b)
+/* USB Interface Association Descriptor (0x0b) */
 typedef struct __attribute__((packed)) zusb_desc_interface_assoc_t {
-  uint8_t bLength;              // +0
-  uint8_t bDescriptorType;      // +1
-  uint8_t bFirstInterface;      // +2
-  uint8_t bInterfaceCount;      // +3
-  uint8_t bFunctionClass;       // +4
-  uint8_t bFunctionSubClass;    // +5
-  uint8_t bFunctionProtocol;    // +6
-  uint8_t iFunction;            // +7
+  uint8_t bLength;              /* +0 */
+  uint8_t bDescriptorType;      /* +1 */
+  uint8_t bFirstInterface;      /* +2 */
+  uint8_t bInterfaceCount;      /* +3 */
+  uint8_t bFunctionClass;       /* +4 */
+  uint8_t bFunctionSubClass;    /* +5 */
+  uint8_t bFunctionProtocol;    /* +6 */
+  uint8_t iFunction;            /* +7 */
 } zusb_desc_interface_assoc_t;
 
 #ifdef __cplusplus
  }
 #endif
 
-#endif // _ZUSB_TYPES_H_
+ #endif /* _ZUSB_TYPES_H_ */

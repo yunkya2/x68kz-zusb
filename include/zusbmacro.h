@@ -33,12 +33,12 @@
 extern "C" {
 #endif
 
-//----------------------------------------------------------------------------
+/*--------------------------------------------------------------------------*/
 
 volatile struct zusb_regs *zusb __attribute__((common));
 uint8_t *zusbbuf __attribute__((common));
 
-//----------------------------------------------------------------------------
+/*--------------------------------------------------------------------------*/
 
 static inline void zusb_set_region(void *buf, int count)
 {
@@ -106,7 +106,7 @@ static inline int zusb_send_control(int bmRequestType, int bRequest, int wValue,
     return (res == 0) ? zusb->ccount : res;
 }
 
-//----------------------------------------------------------------------------
+/*--------------------------------------------------------------------------*/
 
 static inline void zusb_set_channel(int ch)
 {
@@ -121,7 +121,7 @@ static inline int zusb_open(void)
         uint16_t magic;
         zusb_set_channel(ch);
         if (_dos_bus_err((void *)zusb, &magic, 2) != 0 || magic != ZUSB_MAGIC) {
-            return -1;      // ZUSB not exists
+            return -1;      /* ZUSB not exists */
         }
         if (zusb->stat & ZUSB_STAT_PROTECTED) {
             continue;
@@ -129,7 +129,7 @@ static inline int zusb_open(void)
         zusb_send_cmd(ZUSB_CMD_OPENCH);
         return ch;
     }
-    return -2;      // device busy
+    return -2;      /* device busy */
 }
 
 static inline int zusb_open_protected(void)
@@ -139,14 +139,14 @@ static inline int zusb_open_protected(void)
         uint16_t magic;
         zusb_set_channel(ch);
         if (_dos_bus_err((void *)zusb, &magic, 2) != 0 || magic != ZUSB_MAGIC) {
-            return -1;      // ZUSB not exists
+            return -1;      /* ZUSB not exists */
         }
         if (!(zusb->stat & ZUSB_STAT_INUSE)) {
             zusb_send_cmd(ZUSB_CMD_OPENCHP);
             return ch;
         }
     }
-    return -2;      // device busy
+    return -2;      /* device busy */
 }
 
 static inline void zusb_close(void)
@@ -160,7 +160,7 @@ static inline int zusb_version(void)
     return zusb->err;
 }
 
-//----------------------------------------------------------------------------
+/*--------------------------------------------------------------------------*/
 
 struct zusb_match_with_vid_pid_arg {
     uint16_t vid;
@@ -259,7 +259,7 @@ static inline int zusb_get_string_descriptor(char *str, int len, int index)
 
     zusb->param = (ZUSB_DIR_IN << 8) | ZUSB_REQ_GET_DESCRIPTOR;
     zusb->value = (ZUSB_DESC_STRING << 8) | index;
-    zusb->index = 0x0409;   // language ID (English)
+    zusb->index = 0x0409;   /* language ID (English) */
     zusb_set_region(buf, 256);
     if (zusb_send_cmd(ZUSB_CMD_CONTROL) < 0) {
         return -1;
@@ -279,7 +279,7 @@ static inline int zusb_get_string_descriptor(char *str, int len, int index)
     return zusb->ccount;
 }
 
-//----------------------------------------------------------------------------
+/*--------------------------------------------------------------------------*/
 
 typedef struct zusb_endpoint_config {
     uint8_t address;

@@ -51,7 +51,7 @@
  * SCSI command structure definition
  */
 
-// 0x00: TEST UNIT READY
+/* 0x00: TEST UNIT READY */
 
 typedef struct ATTR_PACKED scsi_test_unit_ready {
   uint8_t cmd_code;
@@ -60,7 +60,7 @@ typedef struct ATTR_PACKED scsi_test_unit_ready {
   uint8_t control;
 } scsi_test_unit_ready_t;
 
-// 0x01: REZERO UNIT
+/* 0x01: REZERO UNIT */
 
 typedef struct ATTR_PACKED scsi_rezero_unit {
   uint8_t cmd_code;
@@ -68,7 +68,7 @@ typedef struct ATTR_PACKED scsi_rezero_unit {
   uint8_t _reserved1[4];
 } scsi_rezero_unit_t;
 
-// 0x03: REQUEST SENSE
+/* 0x03: REQUEST SENSE */
 
 typedef struct ATTR_PACKED scsi_request_sense {
   uint8_t cmd_code;
@@ -92,7 +92,7 @@ typedef struct ATTR_PACKED scsi_request_sense_resp {
   uint8_t sense_key_specific[3];
 } scsi_request_sense_resp_t;
 
-// 0x04: FORMAT UNIT
+/* 0x04: FORMAT UNIT */
 
 typedef struct ATTR_PACKED scsi_format_unit {
   uint8_t cmd_code;
@@ -103,7 +103,7 @@ typedef struct ATTR_PACKED scsi_format_unit {
   uint8_t control;
 } scsi_format_unit_t;
 
-// 0x04: FORMAT UNIT  (UFI specific)
+/* 0x04: FORMAT UNIT  (UFI specific) */
 
 typedef struct ATTR_PACKED scsi_format_unit_ufi {
   uint8_t cmd_code;
@@ -125,7 +125,7 @@ typedef struct ATTR_PACKED scsi_format_unit_ufi_param {
   uint16_t block_size;
 } scsi_format_unit_ufi_param_t;
 
-// 0x07: REASSIGN BLOCKS
+/* 0x07: REASSIGN BLOCKS */
 
 typedef struct ATTR_PACKED scsi_reassign_blocks {
   uint8_t cmd_code;
@@ -134,7 +134,7 @@ typedef struct ATTR_PACKED scsi_reassign_blocks {
   uint8_t control;
 } scsi_reassign_blocks_t;
 
-// 0x0b: SEEK
+/* 0x0b: SEEK */
 
 typedef struct ATTR_PACKED scsi_seek {
   uint8_t cmd_code;
@@ -144,7 +144,7 @@ typedef struct ATTR_PACKED scsi_seek {
   uint8_t control;
 } scsi_seek_t;
 
-// 0x12: INQUIRY
+/* 0x12: INQUIRY */
 
 typedef struct ATTR_PACKED scsi_inquiry {
   uint8_t cmd_code;
@@ -169,7 +169,7 @@ typedef struct ATTR_PACKED scsi_inquiry_resp {
   uint8_t product_rev[4];
 } scsi_inquiry_resp_t;
 
-// 0x15: MODE SELECT (6)
+/* 0x15: MODE SELECT (6) */
 
 typedef struct ATTR_PACKED scsi_mode_select6 {
   uint8_t cmd_code;
@@ -179,7 +179,7 @@ typedef struct ATTR_PACKED scsi_mode_select6 {
   uint8_t control;
 } scsi_mode_select6_t;
 
-// 0x1a: MODE SENSE (6)
+/* 0x1a: MODE SENSE (6) */
 
 typedef struct ATTR_PACKED scsi_mode_sense6 {
   uint8_t cmd_code;
@@ -190,7 +190,7 @@ typedef struct ATTR_PACKED scsi_mode_sense6 {
   uint8_t control;
 } scsi_mode_sense6_t;
 
-// 0x1b: START STOP UNIT
+/* 0x1b: START STOP UNIT */
 
 typedef struct ATTR_PACKED scsi_start_stop_unit {
   uint8_t cmd_code;
@@ -201,7 +201,7 @@ typedef struct ATTR_PACKED scsi_start_stop_unit {
   uint8_t control;
 } scsi_start_stop_unit_t;
 
-// 0x1e: PREVENT ALLOW MEDIUM REMOVAL
+/* 0x1e: PREVENT ALLOW MEDIUM REMOVAL */
 
 typedef struct ATTR_PACKED scsi_prevent_allow_medium_removal {
   uint8_t cmd_code;
@@ -211,7 +211,7 @@ typedef struct ATTR_PACKED scsi_prevent_allow_medium_removal {
   uint8_t control;
 } scsi_prevent_allow_medium_removal_t;
 
-// 0x23: READ FORMAT CAPACITIIES  (UFI specific)
+/* 0x23: READ FORMAT CAPACITIIES  (UFI specific) */
 
 typedef struct ATTR_PACKED scsi_read_format_capacities {
   uint8_t cmd_code;
@@ -231,7 +231,7 @@ typedef struct ATTR_PACKED scsi_read_format_capacities_resp {
   uint16_t block_size;
 } scsi_read_format_capacities_resp_t;
 
-// 0x25: READ CAPACITY (10)
+/* 0x25: READ CAPACITY (10) */
 
 typedef struct ATTR_PACKED scsi_read_capacity10 {
   uint8_t cmd_code;
@@ -247,7 +247,7 @@ typedef struct ATTR_PACKED scsi_read_capacity10_resp {
   uint32_t block_size;
 } scsi_read_capacity10_resp_t;
 
-// 0x28: READ (10)
+/* 0x28: READ (10) */
 
 typedef struct ATTR_PACKED scsi_read10 {
   uint8_t cmd_code;
@@ -258,7 +258,7 @@ typedef struct ATTR_PACKED scsi_read10 {
   uint8_t control;
 } scsi_read10_t;
 
-// 0x2a: WRITE (10)
+/* 0x2a: WRITE (10) */
 
 typedef struct ATTR_PACKED scsi_write10 {
   uint8_t cmd_code;
@@ -269,7 +269,7 @@ typedef struct ATTR_PACKED scsi_write10 {
   uint8_t control;
 } scsi_write10_t;
 
-// 0x2f: VERIFY (10)
+/* 0x2f: VERIFY (10) */
 
 typedef struct ATTR_PACKED scsi_verify10 {
   uint8_t cmd_code;
@@ -280,7 +280,7 @@ typedef struct ATTR_PACKED scsi_verify10 {
   uint8_t control;
 } scsi_verify10_t;
 
-// 0x5a: MODE SENSE (10)
+/* 0x5a: MODE SENSE (10) */
 
 typedef struct ATTR_PACKED scsi_mode_sense10 {
   uint8_t  cmd_code;
@@ -299,4 +299,4 @@ typedef struct ATTR_PACKED scsi_mode_sense10_resp {
   uint8_t  _reserved1[4];
 } scsi_mode_sense10_resp_t;
 
-#endif  // _SCSI_CMD_H_
+#endif  /* _SCSI_CMD_H_ */
