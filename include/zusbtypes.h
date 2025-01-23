@@ -35,17 +35,28 @@
  * Little Endian Macros
  *--------------------------------------------------------------------------*/
 
-typedef uint16_t ule16_t;
-typedef uint32_t ule32_t;
+typedef uint16_t  uint_le16_t;
+typedef uint32_t  uint_le32_t;
+typedef int16_t   int_le16_t;
+typedef int32_t   int_le32_t;
+
+typedef uint16_t  uint_be16_t;
+typedef uint32_t  uint_be32_t;
+typedef int16_t   int_be16_t;
+typedef int32_t   int_be32_t;
 
 #define zusb_bswap16(u16)   ((((u16) & 0xff00) >> 8) | (((u16) & 0x00ff) << 8))
 #define zusb_bswap32(u32)   ((((u32) & 0xff000000) >> 24) | (((u32) & 0x00ff0000) >> 8) | \
                              (((u32) & 0x0000ff00) << 8) | (((u32) & 0x000000ff) << 24))
 #define zusb_htole16(u16)   (zusb_bswap16(u16))
-#define zusb_le16toh(u16)   (zusb_bswap16(u16))
 #define zusb_htole32(u32)   (zusb_bswap32(u32))
+#define zusb_le16toh(u16)   (zusb_bswap16(u16))
 #define zusb_le32toh(u32)   (zusb_bswap32(u32))
 
+#define zusb_htobe16(u16)   (u16)
+#define zusb_htobe32(u32)   (u32)
+#define zusb_be16toh(u16)   (u16)
+#define zusb_be32toh(u32)   (u32)
 
 /*----------------------------------------------------------------------------
  * USB Constants
@@ -123,9 +134,9 @@ typedef uint32_t ule32_t;
 typedef struct __attribute__((packed)) zusb_control_request_t {
   uint8_t bmRequestType;        /* +0 */
   uint8_t bRequest;             /* +1 */
-  ule16_t wValue;               /* +2 */
-  ule16_t wIndex;               /* +4 */
-  ule16_t wLength;              /* +6 */
+  uint_le16_t wValue;           /* +2 */
+  uint_le16_t wIndex;           /* +4 */
+  uint_le16_t wLength;          /* +6 */
 } zusb_control_request_t;
 
 /*----------------------------------------------------------------------------
@@ -154,14 +165,14 @@ typedef struct __attribute__((packed)) zusb_desc_header {
 typedef struct __attribute__((packed)) zusb_desc_device_t {
   uint8_t bLength;              /* +0 */
   uint8_t bDescriptorType;      /* +1 */
-  ule16_t bcdUSB;               /* +2 */
+  uint_le16_t bcdUSB;           /* +2 */
   uint8_t bDeviceClass;         /* +4 */
   uint8_t bDeviceSubClass;      /* +5 */
   uint8_t bDeviceProtocol;      /* +6 */
   uint8_t bMaxPacketSize0;      /* +7 */
-  ule16_t idVendor;             /* +8 */
-  ule16_t idProduct;            /* +10 */
-  ule16_t bcdDevice;            /* +12 */
+  uint_le16_t idVendor;         /* +8 */
+  uint_le16_t idProduct;        /* +10 */
+  uint_le16_t bcdDevice;        /* +12 */
   uint8_t iManufacturer;        /* +14 */
   uint8_t iProduct;             /* +15 */
   uint8_t iSerialNumber;        /* +16 */
@@ -172,7 +183,7 @@ typedef struct __attribute__((packed)) zusb_desc_device_t {
 typedef struct __attribute__((packed)) zusb_desc_configuration {
   uint8_t bLength;              /* +0 */
   uint8_t bDescriptorType;      /* +1 */
-  ule16_t wTotalLength;         /* +2 */
+  uint_le16_t wTotalLength;     /* +2 */
   uint8_t bNumInterfaces;       /* +4 */
   uint8_t bConfigurationValue;  /* +5 */
   uint8_t iConfiguration;       /* +6 */
@@ -184,7 +195,7 @@ typedef struct __attribute__((packed)) zusb_desc_configuration {
 typedef struct __attribute__((packed)) zusb_desc_string {
   uint8_t bLength;              /* +0 */
   uint8_t bDescriptorType;      /* +1 */
-  ule16_t bString[];            /* +2 */
+  uint_le16_t bString[];        /* +2 */
 } zusb_desc_string_t;
 
 /* USB Interface Descriptor (0x04) */
@@ -206,7 +217,7 @@ typedef struct __attribute__((packed)) zusb_desc_endpoint {
   uint8_t bDescriptorType;      /* +1 */
   uint8_t bEndpointAddress;     /* +2 */
   uint8_t bmAttributes;         /* +3 */
-  ule16_t wMaxPacketSize;       /* +4 */
+  uint_le16_t wMaxPacketSize;   /* +4 */
   uint8_t bInterval;            /* +6 */
 } zusb_desc_endpoint_t;
 

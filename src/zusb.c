@@ -211,7 +211,7 @@ int disp_device_descriptor(int devid, int type, uint8_t *desc, void *arg)
 typedef struct __attribute__((packed)) hid_desc {
   uint8_t bLength;
   uint8_t bDescriptorType;
-  ule16_t bcdHID;
+  uint_le16_t bcdHID;
   uint8_t bCountryCode;
   uint8_t bNumDescriptors;
   uint8_t bData[];
@@ -442,8 +442,8 @@ typedef struct __attribute__((packed)) uac_desc_ac_header {
   uint8_t bLength;
   uint8_t bDescriptorType;
   uint8_t bDescriptorSubtype;
-  ule16_t bcdADC;
-  ule16_t wTotalLength;
+  uint_le16_t bcdADC;
+  uint_le16_t wTotalLength;
   uint8_t bInCollection;
   uint8_t baInterfaceNr[];
 } uac_desc_ac_header_t;
@@ -453,10 +453,10 @@ typedef struct __attribute__((packed)) uac_desc_ac_input_terminal {
   uint8_t bDescriptorType;
   uint8_t bDescriptorSubtype;
   uint8_t bTerminalID;
-  ule16_t wTerminalType;
+  uint_le16_t wTerminalType;
   uint8_t bAssocTerminal;
   uint8_t bNrChannels;
-  ule16_t wChannelConfig;
+  uint_le16_t wChannelConfig;
   uint8_t iChannelNames;
   uint8_t iTerminal;
 } uac_desc_ac_input_terminal_t;
@@ -466,7 +466,7 @@ typedef struct __attribute__((packed)) uac_desc_ac_output_terminal {
   uint8_t bDescriptorType;
   uint8_t bDescriptorSubtype;
   uint8_t bTerminalID;
-  ule16_t wTerminalType;
+  uint_le16_t wTerminalType;
   uint8_t bAssocTerminal;
   uint8_t bSourceID;
   uint8_t iTerminal;
@@ -506,7 +506,7 @@ typedef struct __attribute__((packed)) uac_desc_as_interface {
   uint8_t bDescriptorSubtype;
   uint8_t bTerminalLink;
   uint8_t bDelay;
-  ule16_t wFormatTag;
+  uint_le16_t wFormatTag;
 } uac_desc_as_interface_t;
 
 typedef struct __attribute__((packed)) uac_desc_as_format_type_i {
@@ -666,9 +666,9 @@ typedef struct __attribute__((packed)) uvc_desc_vc_header {
   uint8_t bLength;
   uint8_t bDescriptorType;
   uint8_t bDescriptorSubtype;
-  ule16_t bcdUVC;
-  ule16_t wTotalLength;
-  ule32_t dwClockFrequency;
+  uint_le16_t bcdUVC;
+  uint_le16_t wTotalLength;
+  uint_le32_t dwClockFrequency;
   uint8_t bInCollection;
   uint8_t baInterfaceNr[];
 } uvc_desc_vc_header_t;
@@ -678,7 +678,7 @@ typedef struct __attribute__((packed)) uvc_desc_vc_input_terminal {
   uint8_t bDescriptorType;
   uint8_t bDescriptorSubtype;
   uint8_t bTerminalID;
-  ule16_t wTerminalType;
+  uint_le16_t wTerminalType;
   uint8_t bAssocTerminal;
   uint8_t iTerminal;
 } uvc_desc_vc_input_terminal_t;
@@ -688,7 +688,7 @@ typedef struct __attribute__((packed)) uvc_desc_vc_output_terminal {
   uint8_t bDescriptorType;
   uint8_t bDescriptorSubtype;
   uint8_t bTerminalID;
-  ule16_t wTerminalType;
+  uint_le16_t wTerminalType;
   uint8_t bAssocTerminal;
   uint8_t bSourceID;
   uint8_t iTerminal;
@@ -709,8 +709,8 @@ typedef struct __attribute__((packed)) uvc_desc_vc_processing_unit {
   uint8_t bDescriptorSubtype;
   uint8_t bUnitID;
   uint8_t bSourceID;
-  ule16_t wMaxMultiplier;
-  ule16_t wControlSize;
+  uint_le16_t wMaxMultiplier;
+  uint_le16_t wControlSize;
   uint8_t bmControls[];
 } uvc_desc_vc_processing_unit_t;
 
@@ -730,7 +730,7 @@ typedef struct __attribute__((packed)) uvc_desc_vs_input_header {
   uint8_t bDescriptorType;
   uint8_t bDescriptorSubtype;
   uint8_t bNumFormats;
-  ule16_t wTotalLength;
+  uint_le16_t wTotalLength;
   uint8_t bEndpointAddress;
   uint8_t bmInfo;
   uint8_t bTerminalLink;
@@ -746,7 +746,7 @@ typedef struct __attribute__((packed)) uvc_desc_vs_output_header {
   uint8_t bDescriptorType;
   uint8_t bDescriptorSubtype;
   uint8_t bNumFormats;
-  ule16_t wTotalLength;
+  uint_le16_t wTotalLength;
   uint8_t bEndpointAddress;
   uint8_t bTerminalLink;
   uint8_t bControlSize;
@@ -783,14 +783,14 @@ typedef struct __attribute__((packed)) uvc_desc_vs_frame_uncompressed {
   uint8_t bDescriptorSubtype;
   uint8_t bFrameIndex;
   uint8_t bmCapabilities;
-  ule16_t wWidth;
-  ule16_t wHeight;
-  ule32_t dwMinBitRate;
-  ule32_t dwMaxBitRate;
-  ule32_t dwMaxVideoFrameBufferSize;
-  ule32_t dwDefaultFrameInterval;
+  uint_le16_t wWidth;
+  uint_le16_t wHeight;
+  uint_le32_t dwMinBitRate;
+  uint_le32_t dwMaxBitRate;
+  uint_le32_t dwMaxVideoFrameBufferSize;
+  uint_le32_t dwDefaultFrameInterval;
   uint8_t bFrameIntervalType;
-  ule32_t dwFrameInterval[];
+  uint_le32_t dwFrameInterval[];
 } uvc_desc_vs_frame_uncompressed_t;
 
 typedef struct __attribute__((packed)) uvc_desc_vs_color_matching {

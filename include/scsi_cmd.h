@@ -26,6 +26,11 @@
 #define _SCSI_CMD_H_
 
 #include <stdint.h>
+#include "zusbtypes.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define ATTR_PACKED   __attribute__ ((packed))
 
@@ -83,9 +88,9 @@ typedef struct ATTR_PACKED scsi_request_sense_resp {
   uint8_t response_code;
   uint8_t _reserved1;
   uint8_t sense_key;
-  uint32_t information;
+  uint_be32_t information;
   uint8_t add_sense_len;
-  uint32_t command_specific_info;
+  uint_be32_t command_specific_info;
   uint8_t add_sense_code;
   uint8_t add_sense_qualifier;
   uint8_t field_replaceable_unit_code;
@@ -109,20 +114,20 @@ typedef struct ATTR_PACKED scsi_format_unit_ufi {
   uint8_t cmd_code;
   uint8_t defect_list_format;
   uint8_t track_number;
-  uint16_t interleave;
+  uint_be16_t interleave;
   uint8_t _reserved1[2];
-  uint16_t alloc_length;
+  uint_be16_t alloc_length;
   uint8_t _reserved2[3];
 } scsi_format_unit_ufi_t;
 
 typedef struct ATTR_PACKED scsi_format_unit_ufi_param {
   uint8_t _reserved1;
   uint8_t flag;
-  uint16_t defect_list_length;
+  uint_be16_t defect_list_length;
 
-  uint32_t block_num;
+  uint_be32_t block_num;
   uint8_t _reserved2[2];
-  uint16_t block_size;
+  uint_be16_t block_size;
 } scsi_format_unit_ufi_param_t;
 
 /* 0x07: REASSIGN BLOCKS */
@@ -139,7 +144,7 @@ typedef struct ATTR_PACKED scsi_reassign_blocks {
 typedef struct ATTR_PACKED scsi_seek {
   uint8_t cmd_code;
   uint8_t lba_msb;
-  uint16_t lba;
+  uint_be16_t lba;
   uint8_t _reserved2;
   uint8_t control;
 } scsi_seek_t;
@@ -217,7 +222,7 @@ typedef struct ATTR_PACKED scsi_read_format_capacities {
   uint8_t cmd_code;
   uint8_t _reserved1;
   uint8_t _reserved2[5];
-  uint16_t alloc_length;
+  uint_be16_t alloc_length;
   uint8_t control;
 } scsi_read_format_capacities_t;
 
@@ -225,10 +230,10 @@ typedef struct ATTR_PACKED scsi_read_format_capacities_resp {
   uint8_t _reserved1[3];
   uint8_t list_length;
 
-  uint32_t block_num;
+  uint_be32_t block_num;
   uint8_t descriptor_type;
   uint8_t _reserved2;
-  uint16_t block_size;
+  uint_be16_t block_size;
 } scsi_read_format_capacities_resp_t;
 
 /* 0x25: READ CAPACITY (10) */
@@ -236,15 +241,15 @@ typedef struct ATTR_PACKED scsi_read_format_capacities_resp {
 typedef struct ATTR_PACKED scsi_read_capacity10 {
   uint8_t cmd_code;
   uint8_t _reserved1;
-  uint32_t lba;
+  uint_be32_t lba;
   uint8_t _reserved2[2];
   uint8_t partial_medium_indicator;
   uint8_t control;
 } scsi_read_capacity10_t;
 
 typedef struct ATTR_PACKED scsi_read_capacity10_resp {
-  uint32_t last_lba;
-  uint32_t block_size;
+  uint_be32_t last_lba;
+  uint_be32_t block_size;
 } scsi_read_capacity10_resp_t;
 
 /* 0x28: READ (10) */
@@ -252,9 +257,9 @@ typedef struct ATTR_PACKED scsi_read_capacity10_resp {
 typedef struct ATTR_PACKED scsi_read10 {
   uint8_t cmd_code;
   uint8_t _reserved1;
-  uint32_t lba;
+  uint_be32_t lba;
   uint8_t _reserved2;
-  uint16_t block_count;
+  uint_be16_t block_count;
   uint8_t control;
 } scsi_read10_t;
 
@@ -263,9 +268,9 @@ typedef struct ATTR_PACKED scsi_read10 {
 typedef struct ATTR_PACKED scsi_write10 {
   uint8_t cmd_code;
   uint8_t _reserved1;
-  uint32_t lba;
+  uint_be32_t lba;
   uint8_t _reserved2;
-  uint16_t block_count;
+  uint_be16_t block_count;
   uint8_t control;
 } scsi_write10_t;
 
@@ -274,9 +279,9 @@ typedef struct ATTR_PACKED scsi_write10 {
 typedef struct ATTR_PACKED scsi_verify10 {
   uint8_t cmd_code;
   uint8_t _reserved1;
-  uint32_t lba;
+  uint_be32_t lba;
   uint8_t _reserved2;
-  uint16_t block_count;
+  uint_be16_t block_count;
   uint8_t control;
 } scsi_verify10_t;
 
@@ -288,15 +293,19 @@ typedef struct ATTR_PACKED scsi_mode_sense10 {
   uint8_t  page_code;
   uint8_t  subpage_code;
   uint8_t  _reserved2[3];
-  uint16_t alloc_length;
+  uint_be16_t alloc_length;
   uint8_t control;
 } scsi_mode_sense10_t;
 
 typedef struct ATTR_PACKED scsi_mode_sense10_resp {
-  uint16_t mode_data_length;
+  uint_be16_t mode_data_length;
   uint8_t  medium_type_code;
   uint8_t  wp_flag;
   uint8_t  _reserved1[4];
 } scsi_mode_sense10_resp_t;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  /* _SCSI_CMD_H_ */

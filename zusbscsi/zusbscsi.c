@@ -119,9 +119,9 @@ void DPRINTF(char *fmt, ...)
 //----------------------------------------------------------------------------
 
 typedef struct __attribute__((packed)) zusb_msc_cbw  {
-  ule32_t signature;
-  ule32_t tag;
-  ule32_t total_bytes;
+  uint_le32_t signature;
+  uint_le32_t tag;
+  uint_le32_t total_bytes;
   uint8_t dir;
   uint8_t lun;
   uint8_t cmd_len;
@@ -129,9 +129,9 @@ typedef struct __attribute__((packed)) zusb_msc_cbw  {
 } zusb_msc_cbw_t;
 
 typedef struct __attribute__((packed)) zusb_msc_csw {
-  ule32_t signature;
-  ule32_t tag;
-  ule32_t data_residue;
+  uint_le32_t signature;
+  uint_le32_t tag;
+  uint_le32_t data_residue;
   uint8_t status;
 } zusb_msc_csw_t;
 

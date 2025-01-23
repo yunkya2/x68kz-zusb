@@ -125,18 +125,18 @@ void yuv2rgbinit(void);
 uint32_t yuv2rgb(uint8_t *p);
 
 typedef struct __attribute__((packed)) uvc_streaming_control {
-    ule16_t bmHint;
+    uint_le16_t bmHint;
     uint8_t bFormatIndex;
     uint8_t bFrameIndex;
-    ule32_t dwFrameInterval;
-    ule16_t wKeyFrameRate;
-    ule16_t wPFrameRate;
-    ule16_t wCompQuality;
-    ule16_t wCompWindowSize;
-    ule16_t wDelay;
-    ule32_t dwMaxVideoFrameSize;
-    ule32_t dwMaxPayloadTransferSize;
-    ule32_t dwClockFrequency;
+    uint_le32_t dwFrameInterval;
+    uint_le16_t wKeyFrameRate;
+    uint_le16_t wPFrameRate;
+    uint_le16_t wCompQuality;
+    uint_le16_t wCompWindowSize;
+    uint_le16_t wDelay;
+    uint_le32_t dwMaxVideoFrameSize;
+    uint_le32_t dwMaxPayloadTransferSize;
+    uint_le32_t dwClockFrequency;
     uint8_t bmFramingInfo;
     uint8_t bPreferedVersion;
     uint8_t bMinVersion;
@@ -164,14 +164,14 @@ typedef struct __attribute__((packed)) uvc_frame_uncompressed {
     uint8_t bDescriptorSubType;
     uint8_t bFrameIndex;
     uint8_t bmCapabilities;
-    ule16_t wWidth;
-    ule16_t wHeight;
-    ule32_t dwMinBitRate;
-    ule32_t dwMaxBitRate;
-    ule32_t dwMaxVideoFrameBufferSize;
-    ule32_t dwDefaultFrameInterval;
+    uint_le16_t wWidth;
+    uint_le16_t wHeight;
+    uint_le32_t dwMinBitRate;
+    uint_le32_t dwMaxBitRate;
+    uint_le32_t dwMaxVideoFrameBufferSize;
+    uint_le32_t dwDefaultFrameInterval;
     uint8_t bFrameIntervalType;
-    ule32_t dwFrameInterval[];
+    uint_le32_t dwFrameInterval[];
 } uvc_frame_uncompressed_t;
 
 #define ZUSB_REQ_CS_SET_CUR   0x01
