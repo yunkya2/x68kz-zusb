@@ -131,7 +131,10 @@ int main(int argc, char **argv)
 
         do {
             tm2 = _iocs_ontime();
-            quit = (time != 0) && (tm2.sec -tm1.sec >= (time * 100));
+            if (tm2.sec < tm1.sec) {
+                tm1 = _iocs_ontime();
+            }
+            quit = (time != 0) && (tm2.sec - tm1.sec >= (time * 100));
             quit |= (_iocs_b_keysns() != 0);
             stat = zusb->stat & statmask;
         } while (stat == 0 && !quit);

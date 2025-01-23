@@ -206,7 +206,9 @@ int waitep(int epno)
   while (!(zusb->stat & (1 << epno))) {
     tm2 = _iocs_ontime();
     int t = tm2.sec - tm1.sec;
-    if (t >= DEV_TIMEOUT) {
+    if (t < 0) {
+      tm1 = _iocs_ontime();
+    } else if (t >= DEV_TIMEOUT) {
       DPRINTF(" timeout\r\n");
       return -1;
     }

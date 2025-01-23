@@ -190,7 +190,10 @@ int main(int argc, char **argv)
             int stat;
             do {
                 tm2 = _iocs_ontime();
-                quit = (tm2.sec -tm1.sec >= (10 * 100));
+                if (tm2.sec < tm1.sec) {
+                    tm1 = _iocs_ontime();
+                }
+                quit = (tm2.sec - tm1.sec >= (10 * 100));
                 quit |= (_iocs_b_keysns() != 0);
                 stat = zusb->stat & ZUSB_STAT_HOTPLUG;
             } while (stat == 0 && !quit);
