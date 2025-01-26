@@ -173,14 +173,39 @@ int interrupt(void)
     return 0x700d;
   }
 
-  // USBマスストレージデバイスからSCSIデバイスドライバを読み込む
-  int res;
-  extern char _end;
-  res = _iocs_s_read(0x0c00 / 512, (0x4000 - 0x0c00) / 512,  scsiid, 1, &_end);
-  if (res != 0) {
+  // USBマスストレージデバイスがX68kフォーマットされているかチェックする
+  extern char _end[];
+  struct iocs_readcap cap;
+
+  if (_iocs_s_readcap(scsiid, &cap) != 0) {
     _dos_print("USBマスストレージデバイスからのドライバ読み込みに失敗しました\r\n");
     return 0x700d;
   }
+  int blocksize = 0;
+  int s = cap.size >> 8;
+  while (!(s & 1)) {
+      blocksize++;
+      s >>= 1;
+  }
+
+  if (_iocs_s_read(0, 1, scsiid, blocksize, _end) != 0) {
+    _dos_print("USBマスストレージデバイスからのドライバ読み込みに失敗しました\r\n");
+    return 0x700d;
+  }
+  if (memcmp(_end, "X68SCSI1", 8) != 0) {
+    _dos_print("X68kフォーマットされていないメディアです\r\n");
+    return 0x700d;
+  }
+
+  // SCSIデバイスドライバを読み込む (0x0c00 - 0x4000)
+  // (一旦0x0800-を読んで0x0c00-の内容を使う(2048bytes/sector対策))
+  if (_iocs_s_read(0x0800 >> (blocksize + 8),
+                   (0x4000 - 0x0800) >> (blocksize + 8),
+                   scsiid, blocksize, &_end) != 0) {
+    _dos_print("USBマスストレージデバイスからのドライバ読み込みに失敗しました\r\n");
+    return 0x700d;
+  }
+  memcpy(_end, &_end[0x0400], 0x4000 - 0x0c00);
 
   struct devheader {
     uint32_t next;
@@ -193,14 +218,14 @@ int interrupt(void)
   };
 
   // SCSIデバイスドライバのstrategy/interruptルーチンをリロケーションする
-  struct devheader *d = (struct devheader *)&_end;
-  d->strategy += (uint32_t)&_end;
-  d->interrupt += (uint32_t)&_end;
+  struct devheader *d = (struct devheader *)_end;
+  d->strategy += (uint32_t)_end;
+  d->interrupt += (uint32_t)_end;
   d->part = 1;    // パーティション数
 
   // SCSIデバイスドライバのヘッダをこのドライバ自身のヘッダにコピーする
   extern char devheader;
-  struct devheader *dfrom = (struct devheader *)&_end;
+  struct devheader *dfrom = (struct devheader *)_end;
   struct devheader *dto = (struct devheader *)&devheader;
   *dto = *dfrom;
 
@@ -213,7 +238,7 @@ int interrupt(void)
     "movea.l %1@(6),%%a4\n"   // strategy routine
     "jsr %%a4@\n"
     "movem.l %%sp@+,%%d0-%%d7/%%a0-%%a6\n"
-    : : "a"(reqheader), "a"(&_end));
+    : : "a"(reqheader), "a"(_end));
 
   // SCSIデバイスドライバの初期化 (interruptルーチン呼び出し)
   __asm__ volatile(
@@ -222,7 +247,7 @@ int interrupt(void)
     "movea.l %0@(10),%%a4\n"  // interrupt routine
     "jsr %%a4@\n"
     "movem.l %%sp@+,%%d0-%%d7/%%a0-%%a6\n"
-    : : "a"(&_end), "d"(scsiid + 1));
+    : : "a"(_end), "d"(scsiid + 1));
 
   _dos_print("ドライブ");
   _dos_putchar('A' + drive);
