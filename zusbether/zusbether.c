@@ -547,6 +547,7 @@ int etherfunc(int cmd, void *args)
     DPRINTF("proto=0x%x res=%d\r\n", proto, res);
     if (res > 0) {
       DPRINTF("disable receiver\r\n");
+      zusb_send_cmd(ZUSB_CMD_CANCELXFER(EP_RECV));
       ax_rx_init(false);
     }
     return 0;   // not supported yet
