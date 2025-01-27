@@ -457,7 +457,11 @@ int interrupt(void)
     }
     zusb_set_channel(i);
     if (connect_msc() < 0) {
-      continue;     // 指定のデバイスに接続できなかった
+      // 指定のデバイスに接続できなかったのでチャネルを閉じる
+      zusb_close();
+      zu->scsiid = -1;
+      zu->devid = -1;
+      continue;
     }
 
     // デバイスに接続できたのでSCSI IOCSコールで利用できるようにする

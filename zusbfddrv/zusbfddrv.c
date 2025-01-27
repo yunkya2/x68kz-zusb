@@ -609,6 +609,20 @@ int interrupt(void)
         if (d->iProduct) {
           zusb_get_string_descriptor(product, sizeof(product), d->iProduct);
         }
+      } else {
+        int runits = i;
+        for (; i < units; i++) {
+          zusb_set_channel(zusb_channels[i]);
+          zusb_close();
+          zusb_channels[i] = -1;
+        }
+        units = runits;
+        if (units == 0) {
+          _dos_print("USBフロッピーディスクが接続されていません\r\n");
+          return 0x700d;
+        } else {
+          break;
+        }
       }
       _dos_print("ドライブ");
       _dos_putchar('A' + *(uint8_t *)&req->fcb + i);
