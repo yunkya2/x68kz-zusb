@@ -65,6 +65,7 @@ struct dos_req_header *reqheader;         // Human68kからのリクエストヘ
 
 extern void *scsiiocs_org;                // ベクタ変更前のIOCS _SCSIDRV処理アドレス
 extern uint8_t zusbscsi_mask;             // ZUSB MOドライバのSCSI ID処理マスク
+extern uint8_t zusb_selected;             // SCSI IOCSがZUSB MOドライバを選択中か
 extern void scsiiocs_zusb();              // 変更後のIOCS _SCSIDRV処理
 
 extern struct zusb_unit zusb_unit[MAX_DRIVE];
@@ -529,16 +530,21 @@ int zusbscsi(uint32_t d1, uint32_t d2, uint32_t d3, uint32_t d4, uint32_t d5, vo
   DPRINTF("zusbscsi[%02x]", d1);
   DPRINTF("d2=%d d3=%d d4=%d d5=%d a1=%p", d2, d3, d4, d5, a1);
 
-  zu = NULL;
-  for (int i = 0; i < MAX_DRIVE; i++) {
-    if (zusb_unit[i].scsiid == (d4 & 7)) {
-      zu = &zusb_unit[i];
-      zusb_set_channel(i);
-      DPRINTF(" ch=%u\r\n", i);
-      break;
+  if (d1 == 0x01 || d1 == 0x02 || d1 >= 0x20) {
+    zu = NULL;
+    for (int i = 0; i < MAX_DRIVE; i++) {
+      if (zusb_unit[i].scsiid == (d4 & 7)) {
+        zu = &zusb_unit[i];
+        zusb_set_channel(i);
+        DPRINTF(" ch=%u\r\n", i);
+        break;
+      }
     }
+  } else {
+    DPRINTF("\r\n");
   }
-  if (zu == NULL) {
+
+  if (d1 != 0x00 && zu == NULL) {
     return -1;
   }
 
@@ -601,6 +607,8 @@ int zusbscsi(uint32_t d1, uint32_t d2, uint32_t d3, uint32_t d4, uint32_t d5, vo
   case 0x07: // _S_MSGIN
     *(uint8_t *)a1 = 0;
     scsi_psns = 0;
+    zu = NULL;
+    zusb_selected = false;
     break;
 
   case 0x08: // _S_MSGOUT

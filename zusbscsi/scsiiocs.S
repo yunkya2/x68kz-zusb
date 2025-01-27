@@ -31,6 +31,7 @@ scsiiocs_org:
     .global zusbscsi_mask
 zusbscsi_mask:
     .byte   0                   // ZUSB SCSIのSCSI ID処理マスク
+    .global zusb_selected
 zusb_selected:
     .byte   0                   // ZUSB SCSIのIDが選択されているか
 
