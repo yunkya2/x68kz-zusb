@@ -39,6 +39,8 @@
 int main(int argc, char **argv)
 {
     int devid = -1;
+    int devvid = -1;
+    int devpid = -1;
     int frames = -1;
     int videosize = -1;
     int resolution = -1;
@@ -46,7 +48,7 @@ int main(int argc, char **argv)
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0) {
-            printf("Usage: %s [-h][-v][-r<resolution>][-s<videosize>] [devid] [frames]\n", argv[0]);
+            printf("Usage: %s [-h][-v][-r<resolution>][-s<videosize>] [devid | vid:pid] [frames]\n", argv[0]);
             printf(" <resolution>: 0=no display 1=256x256(default) 2=512x512\n");
             printf(" <video size>: 0=160x120(default) 1=320x240\n");
             return 0;
@@ -56,6 +58,9 @@ int main(int argc, char **argv)
             resolution = strtol(&argv[i][2], NULL, 0);
         } else if (strncmp(argv[i], "-s", 2) == 0) {
             videosize = strtol(&argv[i][2], NULL, 0);
+        } else if (strchr(argv[i], ':') && ((devvid < 0) || (devpid < 0))) {
+            devvid = strtol(argv[i], NULL, 16);
+            devpid = strtol(strchr(argv[i], ':') + 1, NULL, 16);
         } else if (devid < 0) {
             devid = strtol(argv[i], NULL, 0);
         } else if (frames < 0) {
@@ -68,6 +73,11 @@ int main(int argc, char **argv)
     if (zusb_open(0) < 0) {
         printf("ZUSB デバイスが見つかりません\n");
         exit(1);
+    }
+
+    if (devvid > 0 && devpid > 0) {
+        // デバイスを vid:pid で指定された場合
+        devid = zusb_find_device_with_vid_pid(devvid, devpid, 0);
     }
 
     if (devid < 0) {

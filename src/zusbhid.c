@@ -37,12 +37,17 @@
 int main(int argc, char **argv)
 {
     int devid = -1;
+    int devvid = -1;
+    int devpid = -1;
     int time = -1;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0) {
-            printf("Usage: %s [-h] [devid] [time]\n", argv[0]);
+            printf("Usage: %s [-h] [devid | vid:pid] [time]\n", argv[0]);
             return 0;
+        } else if (strchr(argv[i], ':') && ((devvid < 0) || (devpid < 0))) {
+            devvid = strtol(argv[i], NULL, 16);
+            devpid = strtol(strchr(argv[i], ':') + 1, NULL, 16);
         } else if (devid < 0) {
             devid = strtol(argv[i], NULL, 0);
         } else if (time < 0) {
@@ -58,6 +63,11 @@ int main(int argc, char **argv)
     if (zusb_open(0) < 0) {
         printf("ZUSB デバイスが見つかりません\n");
         exit(1);
+    }
+
+    if (devvid > 0 && devpid > 0) {
+        // デバイスを vid:pid で指定された場合
+        devid = zusb_find_device_with_vid_pid(devvid, devpid, 0);
     }
 
     if (devid < 0) {

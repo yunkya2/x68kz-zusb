@@ -39,13 +39,15 @@
 int main(int argc, char **argv)
 {
     int devid = -1;
+    int devvid = -1;
+    int devpid = -1;
     int samplerate = -1;
     int volume = 9999;
     char *filename = NULL;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0) {
-            printf("Usage: %s [-h][-r<sample rate>][-v<volume>] [devid] [filename]\n", argv[0]);
+            printf("Usage: %s [-h][-r<sample rate>][-v<volume>] [devid | vid:pid] [filename]\n", argv[0]);
             printf(" <sample rate>: 44100 or 48000\n");
             printf(" <volume>: -128 .. 127 (dB)\n");
             return 0;
@@ -53,6 +55,9 @@ int main(int argc, char **argv)
             samplerate = strtol(&argv[i][2], NULL, 0);
         } else if (strncmp(argv[i], "-v", 2) == 0) {
             volume = strtol(&argv[i][2], NULL, 0);
+        } else if (strchr(argv[i], ':') && ((devvid < 0) || (devpid < 0))) {
+            devvid = strtol(argv[i], NULL, 16);
+            devpid = strtol(strchr(argv[i], ':') + 1, NULL, 16);
         } else if (devid < 0) {
             devid = strtol(argv[i], NULL, 0);
         } else if (filename == NULL) {
@@ -65,6 +70,11 @@ int main(int argc, char **argv)
     if (zusb_open(0) < 0) {
         printf("ZUSB デバイスが見つかりません\n");
         exit(1);
+    }
+
+    if (devvid > 0 && devpid > 0) {
+        // デバイスを vid:pid で指定された場合
+        devid = zusb_find_device_with_vid_pid(devvid, devpid, 0);
     }
 
     if (devid < 0) {
