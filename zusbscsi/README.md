@@ -50,6 +50,13 @@ zusbscsi.sys 組み込み後は、以下のようなドライバやコマンド�
  * [SCSIデバイスドライバ susie.x (GORRY氏作)](http://retropc.net/x68000/software/disk/scsi/susie/)
  * その他、SCSI IOCS を用いたディスクアクセスを行うプログラム全般
 
+### CD-DA 読み込み対応
+
+初期の SCSI CD-ROM ドライブでは音楽 CD のオーディオデータ (CD-DA) の読み込みにメーカー固有のコマンドが必要でした(SONY系/TOSHIBA系)。
+zusbscsi.sys では CD-ROM ドライブに対する SONY系 CD-DA読み込みコマンドを、後に規格化された READ CD コマンドに変換して発行します。
+
+これにより、[CD2PCMt.x (TNB製作所氏作)](http://retropc.net/x68000/software/disk/scsi/cd2pcmt/) などを用いたオーディオデータの読み込みが可能になります。
+
 ## USB MO ドライバ zusbmodrv.sys 概要
 
 zusbmodrv.sys は、zusbscsi.sys 組み込み後に用いることで、USB MO ドライブに挿入されている MO ディスクの SCSI デバイスドライバをロードするためのドライバです。

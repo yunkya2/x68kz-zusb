@@ -577,7 +577,52 @@ int zusbscsi(uint32_t d1, uint32_t d2, uint32_t d3, uint32_t d4, uint32_t d5, vo
   case 0x04: // _S_DATAIN
   case 0x0b: // _S_DATAINI
     if (scsi_cmd_len > 0) {
-      scsi_sts = msc_scsi_sendcmd(scsi_cmd, scsi_cmd_len, ZUSB_DIR_IN, a1, d3);
+      if (scsi_cmd[0] == 0xd8) {
+        /*
+         * CD-DAデータ読み込み対応
+         *
+         * SONY CDU-561音声トラック読み込みコマンドが発行されたらGeneral SCSI-3 READ CD commandに
+         * 差し替えることで、CD2PCMt.XなどのCD-DA取り込みツールをUSB CD-ROMドライブに対しても
+         * 使用できるようになる
+         *
+         * 参考: CDDAUSUB.x (KIN 氏作)
+         *   http://retropc.net/x68000/software/disk/scsi/cddasub/
+         */
+        uint32_t lba = (scsi_cmd[2] << 24) | (scsi_cmd[3] << 16) | (scsi_cmd[4] << 8) | scsi_cmd[5];
+        scsi_cmd_len = 12;
+        scsi_cmd[0] = 0xbe;         // General SCSI-3 READ CD command
+        scsi_cmd[1] = 0x00;
+        scsi_cmd[9] = 0x10;         // Flag bits (User Data)
+        scsi_cmd[10] = 0x00;
+        scsi_cmd[11] = 0x00;
+
+        uint32_t read_len = d3;
+        while (read_len > 0) {
+          /*
+           * 1回のデータ転送長が長すぎるとデータ転送が途切れる場合があるため、750セクタ(10秒分)
+           * ごとに分割する
+           */
+          uint32_t len = read_len > 2352 * 750 ? 2352 * 750 : read_len;
+          uint32_t sects = len / 2352;
+
+          scsi_cmd[2] = lba >> 24;  // Logical Block Address
+          scsi_cmd[3] = lba >> 16;
+          scsi_cmd[4] = lba >> 8;
+          scsi_cmd[5] = lba;
+          scsi_cmd[6] = sects >> 16; // Transfer Length
+          scsi_cmd[7] = sects >> 8;
+          scsi_cmd[8] = sects;
+          scsi_sts = msc_scsi_sendcmd(scsi_cmd, scsi_cmd_len, ZUSB_DIR_IN, a1, len);
+          if (scsi_sts < 0) {
+            break;
+          }
+          read_len -= len;
+          a1 += len;
+          lba += sects;
+        }
+      } else {
+        scsi_sts = msc_scsi_sendcmd(scsi_cmd, scsi_cmd_len, ZUSB_DIR_IN, a1, d3);
+      }
       scsi_cmd_len = -1;
       scsi_psns = SPC_PSNS_REQ|SPC_PSNS_BSY|SPC_PSNS_CD|SPC_PSNS_IO;
       res = (scsi_sts < 0) ? -1 : 0;
@@ -714,16 +759,16 @@ int zusbscsi(uint32_t d1, uint32_t d2, uint32_t d3, uint32_t d4, uint32_t d5, vo
     res = msc_scsi_sendcmd(&cmd_mode_sense, sizeof(cmd_mode_sense), ZUSB_DIR_IN, a1, d3);
     if (res == 2 && zu->devtype == 0x05 && d2 == 0x3f) {
       /*
-        USB CD-ROMドライブへのワークアラウンド
-
-        SCSI MODE SENSEコマンドに応答を返さないドライブがある
-        計測技研のCD-ROMドライバ(CDDEV.SYS)などはドライブに対してMODE SENSEを発行しないので
-        問題なく動作するが、SUSIE.XがMODE SENSEの結果でwrite protectの有無を判断しているため
-        応答を返さないとSUSIEのCD-ROMドライバが動作しない
-
-        device typeがCD-ROMにMODE SENSEで全パラメータを要求してエラーになった場合
-        ダミーデータを返して正常終了したことにする
-        (CD-ROMなので常にwrite protect状態で問題ない)
+       * USB CD-ROMドライブへのワークアラウンド
+       * 
+       * SCSI MODE SENSEコマンドに応答を返さないドライブがある
+       * 計測技研のCD-ROMドライバ(CDDEV.SYS)などはドライブに対してMODE SENSEを発行しないので
+       * 問題なく動作するが、SUSIE.XがMODE SENSEの結果でwrite protectの有無を判断しているため
+       * 応答を返さないとSUSIEのCD-ROMドライバが動作しない
+       * 
+       * device typeがCD-ROMにMODE SENSEで全パラメータを要求してエラーになった場合
+       * ダミーデータを返して正常終了したことにする
+       * (CD-ROMなので常にwrite protect状態で問題ない)
       */
       memset(a1, 0, d3);
       ((uint8_t *)a1)[2] = 0x80;  // write protect
@@ -740,6 +785,15 @@ int zusbscsi(uint32_t d1, uint32_t d2, uint32_t d3, uint32_t d4, uint32_t d5, vo
       .alloc_length = d3,
     };
     res = msc_scsi_sendcmd(&cmd_mode_select, sizeof(cmd_mode_select), ZUSB_DIR_OUT, a1, d3);
+    if (res == 2 && zu->devtype == 0x05) {
+      /*
+       * USB CD-ROMドライブへのワークアラウンド
+       *
+       * CD2PCMt.XなどのCD-DA取り込みツールが発行するMODE SELECTで読み込みセクタ長や
+       * 読み込み速度を設定しているが、これらがエラーになっても無視する
+      */
+      res = 0;
+    }
     break;
   }
 
