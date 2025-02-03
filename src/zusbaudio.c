@@ -312,21 +312,46 @@ void audio_test(int epout, int samplerate, int volume, char *filename)
             }
         }
 
+        struct iocs_time tm1 = _iocs_ontime();
+
         // バッファにデータを読み込む
         int len = read(fd, wbuf[s], bufsize);
         if (len <= 0) {
             break;
         }
-        printf("length = %d %d\n", len, s);
+//        printf("length = %d %d\n", len, s);
 
-        // エンディアンを反転 (出力データはlittle endian)
-        uint16_t *w = (uint16_t *)wbuf[s];
-        for (int i = 0; i < len; i += 2) {
-            __asm__ volatile ("move.w %0@,%%d0\n"
-                              "rol.w #8,%%d0\n"
-                              "move.w %%d0,%0@\n" : : "a" (w) : "%%d0");
-            w++;
-        }
+        struct iocs_time tm2 = _iocs_ontime();
+
+        // isochronous転送時にエンディアンが反転するので、あらかじめ反転しておく
+         __asm__ volatile (
+            "movem.l %%d0-%%d1/%0,%%sp@-\n"
+
+            "1:\n"
+            "movep.l %0@(0),%%d0\n"
+            "movep.l %0@(1),%%d1\n"
+            "movep.l %%d0,%0@(1)\n"
+            "movep.l %%d1,%0@(0)\n"
+            "movep.l %0@(8),%%d0\n"
+            "movep.l %0@(9),%%d1\n"
+            "movep.l %%d0,%0@(9)\n"
+            "movep.l %%d1,%0@(8)\n"
+            "movep.l %0@(16),%%d0\n"
+            "movep.l %0@(17),%%d1\n"
+            "movep.l %%d0,%0@(17)\n"
+            "movep.l %%d1,%0@(16)\n"
+            "movep.l %0@(24),%%d0\n"
+            "movep.l %0@(25),%%d1\n"
+            "movep.l %%d0,%0@(25)\n"
+            "movep.l %%d1,%0@(24)\n"
+            "lea.l %0@(32),%0\n"
+            "cmpa.l %1,%0\n"
+            "blt.b 1b\n"
+
+            "movem.l %%sp@+,%%d0-%%d1/%0\n"
+            : : "a" (wbuf[s]), "a" (wbuf[s] + len));
+
+        struct iocs_time tm3 = _iocs_ontime();
 
         // バッファのデータを出力する
         zusb_set_ep_region_isoc(epout, wbuf[s], desc[s], ndesc);
@@ -336,7 +361,10 @@ void audio_test(int epout, int samplerate, int volume, char *filename)
         while (zusb->pcount[epout] > ndesc) {
             printf("\r%d  ", zusb->pcount[epout]);
         }
-        printf("\r%d  \n", zusb->pcount[epout]);
+        printf("\r%d  ", zusb->pcount[epout]);
+
+        printf("%d0ms %d0ms\n",
+               tm2.sec - tm1.sec, tm3.sec - tm2.sec);
 
         // バッファの表裏を交代する
         s = 1 - s;
