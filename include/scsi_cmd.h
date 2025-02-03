@@ -50,6 +50,7 @@ extern "C" {
 #define SCSI_CMD_READ_10                        0x28
 #define SCSI_CMD_WRITE_10                       0x2a
 #define SCSI_CMD_VERIFY_10                      0x2f
+#define SCSI_CMD_MODE_SELECT_10                 0x55
 #define SCSI_CMD_MODE_SENSE_10                  0x5a
 
 /*
@@ -285,23 +286,33 @@ typedef struct ATTR_PACKED scsi_verify10 {
   uint8_t control;
 } scsi_verify10_t;
 
+/* 0x55: MODE SELECT (10) */
+
+typedef struct ATTR_PACKED scsi_mode_select10 {
+  uint8_t cmd_code;
+  uint8_t flag_1;
+  uint8_t _reserved2[5];
+  uint_be16_t alloc_length;
+  uint8_t control;
+} scsi_mode_select10_t;
+
 /* 0x5a: MODE SENSE (10) */
 
 typedef struct ATTR_PACKED scsi_mode_sense10 {
-  uint8_t  cmd_code;
-  uint8_t  _reserved1;
-  uint8_t  page_code;
-  uint8_t  subpage_code;
-  uint8_t  _reserved2[3];
+  uint8_t cmd_code;
+  uint8_t _reserved1;
+  uint8_t page_code;
+  uint8_t subpage_code;
+  uint8_t _reserved2[3];
   uint_be16_t alloc_length;
   uint8_t control;
 } scsi_mode_sense10_t;
 
 typedef struct ATTR_PACKED scsi_mode_sense10_resp {
   uint_be16_t mode_data_length;
-  uint8_t  medium_type_code;
-  uint8_t  wp_flag;
-  uint8_t  _reserved1[4];
+  uint8_t medium_type_code;
+  uint8_t wp_flag;
+  uint8_t _reserved1[4];
 } scsi_mode_sense10_resp_t;
 
 #ifdef __cplusplus
