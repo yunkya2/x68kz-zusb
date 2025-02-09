@@ -34,8 +34,8 @@ extern "C" {
 /* constatnt definitions */
 
 #define ZUSB_MAGIC              0x5a55    /* 'ZU' */
-#define ZUSB_BASEADDR           0xea4000
-#define ZUSB_N_CH               4
+#define ZUSB_BASEADDR           0xec0000
+#define ZUSB_N_CH               8
 #define ZUSB_N_EP               8
 #define ZUSB_SHIFT_CH           12
 #define ZUSB_SZ_CH              (1 << ZUSB_SHIFT_CH)        /* 4096bytes */
