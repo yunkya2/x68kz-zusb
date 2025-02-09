@@ -125,7 +125,16 @@ void DPRINTF(char *fmt, ...)
   va_start(ap, fmt);
   vsiprintf(buf, fmt, ap);
   va_end(ap);
+#ifndef DEBUG_UART
   _iocs_b_print(buf);
+#else
+  char *p = buf;
+  while (*p) {
+    while (_iocs_osns232c() == 0)
+      ;
+    _iocs_out232c(*p++);
+  }
+#endif
 }
 #else
 #define DPRINTF(...)
@@ -748,14 +757,20 @@ int interrupt(void)
 
   case 0x13: /* special ioctl */
   {
-    DPRINTF("Special ioctl\r\n");
+    DPRINTF("Special ioctl 0x%x\r\n", req->status >> 16);
     switch (req->status >> 16) {
     case 2:
       d->medium_change_reported = false;
       break;
-    case -1:
+    case 0xffff:
+      memcpy(req->addr, "ZUSBfdd1", 8);
+      break;
     case 0:
+      *(uint16_t *)req->addr = (*d->current_bpb)->mediabyte;
+      break;
     case 1:
+      *(int32_t *)req->addr = -1;
+      break;
     default:
       err = 0x1003;   // Invalid command
       break;
