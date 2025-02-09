@@ -35,6 +35,8 @@
 
 #include <zusb.h>
 
+int16_t ch_devid[ZUSB_N_CH];
+
 void disp_hid_descriptors(int devid, int subclass, int type, uint8_t *desc, void *arg);
 void disp_uac_descriptors(int devid, int subclass, int type, uint8_t *desc, void *arg);
 void disp_uvc_descriptors(int devid, int subclass, int type, uint8_t *desc, void *arg);
@@ -57,7 +59,18 @@ int disp_descriptors(int devid, int type, uint8_t *desc, void *arg)
         return 0;
     }
     if (type == ZUSB_DESC_DEVICE) {
-        printf("Device:%3d\n", devid);
+        int ch;
+        printf("Device:%3d", devid);
+        for (ch = 0; ch < ZUSB_N_CH; ch++) {
+            if (ch_devid[ch] == devid) {
+                break;
+            }
+        }
+        if (ch >= ZUSB_N_CH) {
+            printf("\n");
+        } else {
+            printf(" (ch.%d)\n", ch);
+        }
     }
 
     if (a->verbose) {
@@ -82,15 +95,15 @@ int disp_descriptors(int devid, int type, uint8_t *desc, void *arg)
         printf(" ver:%x", zusb_le16toh(ddev->bcdDevice));
         printf("\n");
         if (ddev->iManufacturer &&
-            zusb_get_string_descriptor(str, sizeof(str), ddev->iManufacturer)) {
+            zusb_get_string_descriptor(str, sizeof(str), ddev->iManufacturer) > 0) {
             printf("\tManufacturer: %s\n", str);
         }
         if (ddev->iProduct &&
-            zusb_get_string_descriptor(str, sizeof(str), ddev->iProduct)) {
+            zusb_get_string_descriptor(str, sizeof(str), ddev->iProduct) > 0) {
             printf("\tProduct:      %s\n", str);
         }
         if (ddev->iSerialNumber &&
-            zusb_get_string_descriptor(str, sizeof(str), ddev->iSerialNumber)) {
+            zusb_get_string_descriptor(str, sizeof(str), ddev->iSerialNumber) > 0) {
             printf("\tSerial:       %s\n", str);
         }
         break;
@@ -102,7 +115,7 @@ int disp_descriptors(int devid, int type, uint8_t *desc, void *arg)
         printf(" #%d", dconf->bConfigurationValue);
         a->current_config = dconf->bConfigurationValue;
         if (dconf->iConfiguration &&
-            zusb_get_string_descriptor(str, sizeof(str), dconf->iConfiguration)) {
+            zusb_get_string_descriptor(str, sizeof(str), dconf->iConfiguration) > 0) {
             printf(" name:%s", str);
         }
         printf(" MaxPower:%dmA", dconf->bMaxPower * 2);
@@ -119,7 +132,7 @@ int disp_descriptors(int devid, int type, uint8_t *desc, void *arg)
         printf(" subclass:%d", dintf->bInterfaceSubClass);
         printf(" protocol:%d", dintf->bInterfaceProtocol);
         if (dintf->iInterface &&
-            zusb_get_string_descriptor(str, sizeof(str), dintf->iInterface)) {
+            zusb_get_string_descriptor(str, sizeof(str), dintf->iInterface) > 0) {
             printf(" name:%s", str);
         }
         printf("\n");
@@ -177,6 +190,7 @@ int disp_device_descriptor(int devid, int type, uint8_t *desc, void *arg)
     struct disp_descriptors_arg *a = (struct disp_descriptors_arg *)arg;
     zusb_desc_device_t *ddev = (zusb_desc_device_t *)desc;
     char str[256];
+    int ch;
 
     if (a->devid >= 0 && devid != a->devid) {
         return 0;
@@ -192,15 +206,26 @@ int disp_device_descriptor(int devid, int type, uint8_t *desc, void *arg)
         printf("\n");
     }
 
-    printf("Device:%3d ", devid);
-    printf("ID:0x%04x-0x%04x", zusb_le16toh(ddev->idVendor), zusb_le16toh(ddev->idProduct));
-    if (ddev->iManufacturer &&
-        zusb_get_string_descriptor(str, sizeof(str), ddev->iManufacturer)) {
-        printf(" %s", str);
+    for (ch = 0; ch < ZUSB_N_CH; ch++) {
+        if (ch_devid[ch] == devid) {
+            break;
+        }
     }
+    if (ch >= ZUSB_N_CH) {
+        printf("  ");
+    } else {
+        printf("#%d", ch);
+    }
+
+    printf(" Device:%3d ", devid);
+    printf("0x%04x-0x%04x", zusb_le16toh(ddev->idVendor), zusb_le16toh(ddev->idProduct));
     if (ddev->iProduct &&
-        zusb_get_string_descriptor(str, sizeof(str), ddev->iProduct)) {
-        printf(" %s", str);
+        zusb_get_string_descriptor(str, sizeof(str), ddev->iProduct) > 0) {
+        printf(" %-30s", str);
+    }
+    if (ddev->iManufacturer &&
+        zusb_get_string_descriptor(str, sizeof(str), ddev->iManufacturer) > 0) {
+        printf(" (%s)", str);
     }
     printf("\n");
     return 0;
@@ -523,6 +548,8 @@ typedef struct __attribute__((packed)) uac_desc_as_format_type_i {
 
 void disp_uac_descriptors(int devid, int subclass, int type, uint8_t *desc, void *arg)
 {
+    char str[256];
+
     switch (desc[1]) {
     case ZUSB_DESC_CS_INTERFACE:
         int p;
@@ -548,14 +575,12 @@ void disp_uac_descriptors(int devid, int subclass, int type, uint8_t *desc, void
                 printf(" assoc:%d", dit->bAssocTerminal);
                 printf(" ch:%d", dit->bNrChannels);
                 printf(" config:0x%04x", zusb_le16toh(dit->wChannelConfig));
-                if (dit->iChannelNames) {
-                    char str[256];
-                    zusb_get_string_descriptor(str, sizeof(str), dit->iChannelNames);
+                if (dit->iChannelNames &&
+                    zusb_get_string_descriptor(str, sizeof(str), dit->iChannelNames) > 0) {
                     printf(" chname:%s", str);
                 }
-                if (dit->iTerminal) {
-                    char str[256];
-                    zusb_get_string_descriptor(str, sizeof(str), dit->iTerminal);
+                if (dit->iTerminal &&
+                    zusb_get_string_descriptor(str, sizeof(str), dit->iTerminal) > 0) {
                     printf(" name:%s", str);
                 }
                 break;
@@ -566,9 +591,8 @@ void disp_uac_descriptors(int devid, int subclass, int type, uint8_t *desc, void
                 printf(" type:0x%03x", zusb_le16toh(dot->wTerminalType));
                 printf(" assoc:%d", dot->bAssocTerminal);
                 printf(" src:%d", dot->bSourceID);
-                if (dot->iTerminal) {
-                    char str[256];
-                    zusb_get_string_descriptor(str, sizeof(str), dot->iTerminal);
+                if (dot->iTerminal &&
+                    zusb_get_string_descriptor(str, sizeof(str), dot->iTerminal) > 0) {
                     printf(" name:%s", str);
                 }
                 break;
@@ -583,9 +607,8 @@ void disp_uac_descriptors(int devid, int subclass, int type, uint8_t *desc, void
                 }
                 printf(" ch:%d", dmix->baSourceID[p]);
                 printf(" config:0x%04x", dmix->baSourceID[p + 1] + (dmix->baSourceID[p + 2] << 8));
-                if (dmix->baSourceID[p + 3]) {
-                    char str[256];
-                    zusb_get_string_descriptor(str, sizeof(str), dmix->baSourceID[p + 3]);
+                if (dmix->baSourceID[p + 3] &&
+                    zusb_get_string_descriptor(str, sizeof(str), dmix->baSourceID[p + 3]) > 0) {
                     printf(" name:%s", str);
                 }
                 break;
@@ -598,9 +621,8 @@ void disp_uac_descriptors(int devid, int subclass, int type, uint8_t *desc, void
                 for (int i = 0; i < p; i++) {
                     printf("%c%d", i == 0 ? ':' : ',', dsel->baSourceID[i]);
                 }
-                if (dsel->baSourceID[p]) {
-                    char str[256];
-                    zusb_get_string_descriptor(str, sizeof(str), dsel->baSourceID[p]);
+                if (dsel->baSourceID[p] && 
+                    zusb_get_string_descriptor(str, sizeof(str), dsel->baSourceID[p]) > 0) {
                     printf(" name:%s", str);
                 }
                 break;
@@ -804,6 +826,8 @@ typedef struct __attribute__((packed)) uvc_desc_vs_color_matching {
 
 void disp_uvc_descriptors(int devid, int subclass, int type, uint8_t *desc, void *arg)
 {
+    char str[256];
+
     switch (desc[1]) {
     case ZUSB_DESC_CS_INTERFACE:
         switch (subclass) {
@@ -827,9 +851,8 @@ void disp_uvc_descriptors(int devid, int subclass, int type, uint8_t *desc, void
                 printf(" id:%d", dvit->bTerminalID);
                 printf(" type:0x%03x", zusb_le16toh(dvit->wTerminalType));
                 printf(" assoc:%d", dvit->bAssocTerminal);
-                if (dvit->iTerminal) {
-                    char str[256];
-                    zusb_get_string_descriptor(str, sizeof(str), dvit->iTerminal);
+                if (dvit->iTerminal &&
+                    zusb_get_string_descriptor(str, sizeof(str), dvit->iTerminal) > 0) {
                     printf(" name:%s", str);
                 }
                 break;
@@ -840,9 +863,8 @@ void disp_uvc_descriptors(int devid, int subclass, int type, uint8_t *desc, void
                 printf(" type:0x%03x", zusb_le16toh(dvot->wTerminalType));
                 printf(" assoc:%d", dvot->bAssocTerminal);
                 printf(" src:%d", dvot->bSourceID);
-                if (dvot->iTerminal) {
-                    char str[256];
-                    zusb_get_string_descriptor(str, sizeof(str), dvot->iTerminal);
+                if (dvot->iTerminal &&
+                    zusb_get_string_descriptor(str, sizeof(str), dvot->iTerminal) > 0) {
                     printf(" name:%s", str);
                 }
                 break;
@@ -996,10 +1018,20 @@ int main(int argc, char **argv)
 
     _iocs_b_super(0);
 
-    if (zusb_open(0) < 0) {
+    int ch;
+    if ((ch = zusb_open(0)) < 0) {
         printf("ZUSB デバイスが見つかりません\n");
         exit(1);
     }
+
+    for (int i = 0; i < ZUSB_N_CH; i++) {
+        zusb_set_channel(i);
+        ch_devid[i] = -1;
+        if (zusb->stat & ZUSB_STAT_INUSE) {
+            ch_devid[i] = zusb->devid;
+        }
+    }
+    zusb_set_channel(ch);
 
     if (arg.verbose) {
         int version = zusb_version();
