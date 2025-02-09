@@ -254,7 +254,6 @@ static int connect_msc(void)
       continue;
     }
     zu->devtype = inq.unit;
-    zu->devid = devid;
     return 0;
   }
 
@@ -286,7 +285,6 @@ int msc_scsi_sendcmd(const void *cmd, int cmd_len, int dir, void *buf, int size)
     if (setjmp(jenv)) {
       // USBデバイスが切り離された
       zusb_disconnect_device();
-      zu->devid = -1;
       if (connect_msc() < 0) {
         return -1;  // 再接続に失敗したのでエラー終了
       } else {
@@ -390,7 +388,7 @@ int interrupt(void)
   memset(&zusb_unit, 0, sizeof(zusb_unit));
   for (int i = 0; i < MAX_DRIVE; i++) {
     zusb_unit[i].scsiid = -1;
-    zusb_unit[i].devid = -1;
+    zusb_unit[i].ch = -1;
   }
 
   // コマンドラインパラメータを解析する
@@ -410,7 +408,7 @@ int interrupt(void)
         p += 2;
       }
       int scsiid = *p++ - '0';
-      if (scsiid >= 0 && scsiid < 7) {
+      if (scsiid >= 0 && scsiid < 7 && units < MAX_DRIVE) {
         if ((ch = zusb_open_protected()) < 0) {
           _dos_print("ZUSB デバイスが見つかりません\r\n");
           for (int i = 0; i < MAX_DRIVE; i++) {
@@ -421,8 +419,9 @@ int interrupt(void)
           }
           return 0x700d;
         }
-        zu = &zusb_unit[ch];
+        zu = &zusb_unit[units];
         zu->scsiid = scsiid;
+        zu->ch = ch;
         units++;
         if (*p == ':') {
           p++;
@@ -455,12 +454,12 @@ int interrupt(void)
     if (zu->scsiid < 0) {
       continue;     // このユニットにはSCSI IDは割り当てられていない
     }
-    zusb_set_channel(i);
+    zusb_set_channel(zu->ch);
     if (connect_msc() < 0) {
       // 指定のデバイスに接続できなかったのでチャネルを閉じる
       zusb_close();
       zu->scsiid = -1;
-      zu->devid = -1;
+      zu->ch = -1;
       continue;
     }
 
@@ -500,7 +499,7 @@ int interrupt(void)
     // 開いたZUSBデバイスを閉じる
     for (int i = 0; i < MAX_DRIVE; i++) {
       if (zusb_unit[i].scsiid >= 0) {
-        zusb_set_channel(i);
+        zusb_set_channel(zusb_unit[i].ch);
         zusb_close();
       }
     }
@@ -539,8 +538,8 @@ int zusbscsi(uint32_t d1, uint32_t d2, uint32_t d3, uint32_t d4, uint32_t d5, vo
     for (int i = 0; i < MAX_DRIVE; i++) {
       if (zusb_unit[i].scsiid == (d4 & 7)) {
         zu = &zusb_unit[i];
-        zusb_set_channel(i);
-        DPRINTF(" ch=%u\r\n", i);
+        zusb_set_channel(zu->ch);
+        DPRINTF(" ch=%u\r\n", zu->ch);
         break;
       }
     }
