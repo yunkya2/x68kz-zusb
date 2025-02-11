@@ -127,6 +127,9 @@ int disp_descriptors(int devid, int type, uint8_t *desc, void *arg)
 
         printf("   Interface:\t");
         printf(" #%d", dintf->bInterfaceNumber);
+        if (dintf->bAlternateSetting) {
+            printf("/%d", dintf->bAlternateSetting);
+        }
         a->current_iface = dintf->bInterfaceNumber;
         printf(" class:%d", dintf->bInterfaceClass);
         printf(" subclass:%d", dintf->bInterfaceSubClass);
