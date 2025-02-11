@@ -134,6 +134,17 @@ int main(int argc, char **argv)
 void yuv2rgbinit(void);
 uint32_t yuv2rgb(uint8_t *p);
 
+typedef struct __attribute__((packed)) uvc_desc_vc_header {
+    uint8_t bLength;
+    uint8_t bDescriptorType;
+    uint8_t bDescriptorSubtype;
+    uint_le16_t bcdUVC;
+    uint_le16_t wTotalLength;
+    uint_le32_t dwClockFrequency;
+    uint8_t bInCollection;
+    uint8_t baInterfaceNr[];
+} uvc_desc_vc_header_t;
+
 typedef struct __attribute__((packed)) uvc_streaming_control {
     uint_le16_t bmHint;
     uint8_t bFormatIndex;
@@ -212,6 +223,7 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
     int use_format_id = -1;
     int use_frame_id = -1;
     int current_format_id = 0;
+    int bcdUVC = 0;
 
     int vsize_w;
     int vsize_h;
@@ -246,31 +258,42 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
                 use_video_stream_if = dintf->bInterfaceNumber;
             }
         }
-        if (!use_config || use_intf_subclass != 2) {
-            continue;   // Configuration, Interface がUVCのものでなければスキップ
+        if (!use_config) {
+            continue;   // ConfigurationがUVCのものでなければスキップ
         }
 
-        switch (desc[1]) {              // Video Streaming Interface
-        case ZUSB_DESC_CS_INTERFACE:
-            if (desc[2] == 0x04) {          // VS_FORMAT_UNCOMPRESSED
-                uvc_format_uncompressed_t *dformat = (uvc_format_uncompressed_t *)desc;
-                current_format_id = dformat->bFormatIndex;
-                if (memcmp(dformat->guidFormat, guid_yuy2, sizeof(guid_yuy2)) == 0) {
-                    use_format_id = current_format_id;
-                }
-            } else if (desc[2] == 0x05 &&   // VS_FRAME_UNCOMPRESSED
-                       current_format_id == use_format_id) {
-                uvc_frame_uncompressed_t *dframe = (uvc_frame_uncompressed_t *)desc;
-                printf("frame id %d ", dframe->bFrameIndex);
-                printf("%d x %d ", zusb_le16toh(dframe->wWidth), zusb_le16toh(dframe->wHeight));
-                printf("%ldbps", zusb_le32toh(dframe->dwMaxBitRate));
-                printf("\n");
-                if (zusb_le16toh(dframe->wWidth) == vsize_w &&
-                    zusb_le16toh(dframe->wHeight) == vsize_h) {
-                    use_frame_id = dframe->bFrameIndex;
+        if (use_intf_subclass == 1) {           // Video Control Interface
+            switch (desc[1]) {
+            case ZUSB_DESC_CS_INTERFACE:
+                if (desc[2] == 0x01) {          // VC_HEADER
+                    uvc_desc_vc_header_t *dvch = (uvc_desc_vc_header_t *)desc;
+                    bcdUVC = zusb_le16toh(dvch->bcdUVC);
+                    break;
                 }
             }
-            break;
+        } else if (use_intf_subclass == 2) {    // Video Streaming Interface
+            switch (desc[1]) {
+            case ZUSB_DESC_CS_INTERFACE:
+                if (desc[2] == 0x04) {          // VS_FORMAT_UNCOMPRESSED
+                    uvc_format_uncompressed_t *dformat = (uvc_format_uncompressed_t *)desc;
+                    current_format_id = dformat->bFormatIndex;
+                    if (memcmp(dformat->guidFormat, guid_yuy2, sizeof(guid_yuy2)) == 0) {
+                        use_format_id = current_format_id;
+                    }
+                } else if (desc[2] == 0x05 &&   // VS_FRAME_UNCOMPRESSED
+                           current_format_id == use_format_id) {
+                    uvc_frame_uncompressed_t *dframe = (uvc_frame_uncompressed_t *)desc;
+                    printf("frame id %d ", dframe->bFrameIndex);
+                    printf("%d x %d ", zusb_le16toh(dframe->wWidth), zusb_le16toh(dframe->wHeight));
+                    printf("%ldbps", zusb_le32toh(dframe->dwMaxBitRate));
+                    printf("\n");
+                    if (zusb_le16toh(dframe->wWidth) == vsize_w &&
+                        zusb_le16toh(dframe->wHeight) == vsize_h) {
+                        use_frame_id = dframe->bFrameIndex;
+                    }
+                }
+                break;
+            }
         }
     }
 
@@ -281,32 +304,37 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
 
     // Video format, frame設定をネゴシエーションする
 
-    printf("GET_MAX: ");
+    size_t scsize = bcdUVC >= 0x0110 ? sizeof(uvc_streaming_control_t) : 26;
     uvc_streaming_control_t *uvcctrl = (uvc_streaming_control_t *)zusbbuf;
+
+    printf("GET_MAX: ");
     zusb_send_control(ZUSB_REQ_CS_IF_IN, ZUSB_REQ_CS_GET_MAX,
-                     0x0100,    // VS_PROBE_CONTROL
-                     use_video_stream_if, sizeof(*uvcctrl), uvcctrl);
+                      0x0100,    // VS_PROBE_CONTROL
+                      use_video_stream_if, scsize, uvcctrl);
     disp_video_cs_request(uvcctrl);
     uvcctrl->bFormatIndex = use_format_id;
     uvcctrl->bFrameIndex = use_frame_id;
+    uvcctrl->dwMaxPayloadTransferSize = zusb_htole32(1024);
 
     printf("SET_CUR: ");
     zusb_send_control(ZUSB_REQ_CS_IF_OUT, ZUSB_REQ_CS_SET_CUR,
-                     0x0100,    // VS_PROBE_CONTROL
-                     use_video_stream_if, zusb->ccount, uvcctrl);
+                      0x0100,    // VS_PROBE_CONTROL
+                      use_video_stream_if, scsize, uvcctrl);
     disp_video_cs_request(uvcctrl);
     printf("GET_CUR: ");
     zusb_send_control(ZUSB_REQ_CS_IF_IN, ZUSB_REQ_CS_GET_CUR,
-                     0x0100,    // VS_PROBE_CONTROL
-                     use_video_stream_if, zusb->ccount, uvcctrl);
+                      0x0100,    // VS_PROBE_CONTROL
+                      use_video_stream_if, scsize, uvcctrl);
     disp_video_cs_request(uvcctrl);
     printf("COMMIT: ");
     zusb_send_control(ZUSB_REQ_CS_IF_OUT, ZUSB_REQ_CS_SET_CUR,
-                     0x0200,    // VS_COMMIT_CONTROL
-                     use_video_stream_if, zusb->ccount, uvcctrl);
+                      0x0200,    // VS_COMMIT_CONTROL
+                      use_video_stream_if, scsize, uvcctrl);
     disp_video_cs_request(uvcctrl);
 
     int req_payload = zusb_le32toh(uvcctrl->dwMaxPayloadTransferSize);
+    // High-bandwidth transferが動作しないのでpayload sizeを最大1024bytesに制限する
+    req_payload = req_payload < 1024 ? req_payload : 1024;
     printf("requested payload size=%d\n", req_payload);
 
     // Class-Specific Interface Descriptor から設定値を取得する (altsettingを取得)
@@ -345,6 +373,11 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
 
     printf("format:%d frame:%d altif:%d payload:%dbytes\n",
            use_format_id, use_frame_id, use_altif, use_payload);
+
+    if (use_payload > 1024) {
+        printf("要求するペイロードサイズにUVCデバイスが対応していません\n");
+        return;
+    }
 
     zusb->param = (use_video_stream_if << 8) | use_altif;
     zusb_send_cmd(ZUSB_CMD_SETIFACE);
