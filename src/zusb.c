@@ -818,6 +818,36 @@ typedef struct __attribute__((packed)) uvc_desc_vs_frame_uncompressed {
   uint_le32_t dwFrameInterval[];
 } uvc_desc_vs_frame_uncompressed_t;
 
+typedef struct __attribute__((packed)) uvc_desc_vs_format_mjpeg {
+  uint8_t bLength;
+  uint8_t bDescriptorType;
+  uint8_t bDescriptorSubtype;
+  uint8_t bFormatIndex;
+  uint8_t bNumFrameDescriptors;
+  uint8_t bmFlags;
+  uint8_t bDefaultFrameIndex;
+  uint8_t bAspectRatioX;
+  uint8_t bAspectRatioY;
+  uint8_t bmInterlaceFlags;
+  uint8_t bCopyProtect;
+} uvc_desc_vs_format_mjpeg_t;
+
+typedef struct __attribute__((packed)) uvc_desc_vs_frame_mjpeg {
+  uint8_t bLength;
+  uint8_t bDescriptorType;
+  uint8_t bDescriptorSubtype;
+  uint8_t bFrameIndex;
+  uint8_t bmCapabilities;
+  uint_le16_t wWidth;
+  uint_le16_t wHeight;
+  uint_le32_t dwMinBitRate;
+  uint_le32_t dwMaxBitRate;
+  uint_le32_t dwMaxVideoFrameBufferSize;
+  uint_le32_t dwDefaultFrameInterval;
+  uint8_t bFrameIntervalType;
+  uint_le32_t dwFrameInterval[];
+} uvc_desc_vs_frame_mjpeg_t;
+
 typedef struct __attribute__((packed)) uvc_desc_vs_color_matching {
   uint8_t bLength;
   uint8_t bDescriptorType;
@@ -957,10 +987,28 @@ void disp_uvc_descriptors(int devid, int subclass, int type, uint8_t *desc, void
                 printf(" type:%d", dvsfr->bFrameIntervalType);
                 break;
             case 0x06:
+                uvc_desc_vs_format_mjpeg_t *dvsfm = (uvc_desc_vs_format_mjpeg_t *)desc;
                 printf("VS_FORMAT_MJPEG:");
+                printf(" idx:%d", dvsfm->bFormatIndex);
+                printf(" frames:%d", dvsfm->bNumFrameDescriptors);
+                printf(" flag:0x%x", dvsfm->bmFlags);
+                printf(" def:%d", dvsfm->bDefaultFrameIndex);
+                printf(" aspect:%d:%d", dvsfm->bAspectRatioX, dvsfm->bAspectRatioY);
+                printf(" interlace:0x%02x", dvsfm->bmInterlaceFlags);
+                printf(" protect:%d", dvsfm->bCopyProtect);
+                break;
                 break;
             case 0x07:
+                uvc_desc_vs_frame_mjpeg_t *dvsfrm = (uvc_desc_vs_frame_mjpeg_t *)desc;
                 printf("VS_FRAME_MJPEG:");
+                printf(" idx:%d", dvsfrm->bFrameIndex);
+                printf(" cap:0x%02x", dvsfrm->bmCapabilities);
+                printf(" size:%dx%d", zusb_le16toh(dvsfrm->wWidth), zusb_le16toh(dvsfrm->wHeight));
+                printf(" bitrate:%ld-%ld", zusb_le32toh(dvsfrm->dwMinBitRate), zusb_le32toh(dvsfrm->dwMaxBitRate));
+                printf(" bufsize:%ld", zusb_le32toh(dvsfrm->dwMaxVideoFrameBufferSize));
+                printf(" interval:%ld", zusb_le32toh(dvsfrm->dwDefaultFrameInterval));
+                printf(" type:%d", dvsfrm->bFrameIntervalType);
+                break;
                 break;
             case 0x0a:
                 printf("VS_FORMAT_MPEGTS:");
