@@ -44,16 +44,19 @@ int main(int argc, char **argv)
     int frames = -1;
     int videosize = -1;
     int resolution = -1;
+    int mjpeg = false;
     int verbose = false;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0) {
-            printf("Usage: %s [-h][-v][-r<resolution>][-s<videosize>] [devid | vid:pid] [frames]\n", argv[0]);
+            printf("Usage: %s [-h][-v][-m][-r<resolution>][-s<videosize>] [devid | vid:pid] [frames]\n", argv[0]);
             printf(" <resolution>: 0=no display 1=256x256(default) 2=512x512\n");
             printf(" <video size>: 0=160x120(default) 1=320x240\n");
             return 0;
         } else if (strncmp(argv[i], "-v", 2) == 0) {
             verbose = true;
+        } else if (strncmp(argv[i], "-m", 2) == 0) {
+            mjpeg = true;
         } else if (strncmp(argv[i], "-r", 2) == 0) {
             resolution = strtol(&argv[i][2], NULL, 0);
         } else if (strncmp(argv[i], "-s", 2) == 0) {
@@ -121,8 +124,8 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    void video_test(int epin, int videosize, int frames, int verbose, int resolution);
-    video_test(0, videosize, frames, verbose, resolution);
+    void video_test(int epin, int videosize, int frames, int verbose, int resolution, int mjpeg);
+    video_test(0, videosize, frames, verbose, resolution, mjpeg);
 
     zusb_disconnect_device();
     zusb_close();
@@ -164,7 +167,7 @@ typedef struct __attribute__((packed)) uvc_streaming_control {
     uint8_t bMaxVersion;
 } uvc_streaming_control_t;
 
-typedef struct __attribute__((packed)) uvc_format_uncompressed {
+typedef struct __attribute__((packed)) uvc_desc_vs_format_uncompressed {
     uint8_t bLength;
     uint8_t bDescriptorType;
     uint8_t bDescriptorSubType;
@@ -177,9 +180,9 @@ typedef struct __attribute__((packed)) uvc_format_uncompressed {
     uint8_t bAspectRatioY;
     uint8_t bmInterfaceFlags;
     uint8_t bCopyProtect;
-} uvc_format_uncompressed_t;
+} uvc_desc_vs_format_uncompressed_t;
 
-typedef struct __attribute__((packed)) uvc_frame_uncompressed {
+typedef struct __attribute__((packed)) uvc_desc_vs_frame_uncompressed {
     uint8_t bLength;
     uint8_t bDescriptorType;
     uint8_t bDescriptorSubType;
@@ -193,7 +196,37 @@ typedef struct __attribute__((packed)) uvc_frame_uncompressed {
     uint_le32_t dwDefaultFrameInterval;
     uint8_t bFrameIntervalType;
     uint_le32_t dwFrameInterval[];
-} uvc_frame_uncompressed_t;
+} uvc_desc_vs_frame_uncompressed_t;
+
+typedef struct __attribute__((packed)) uvc_desc_vs_format_mjpeg {
+    uint8_t bLength;
+    uint8_t bDescriptorType;
+    uint8_t bDescriptorSubtype;
+    uint8_t bFormatIndex;
+    uint8_t bNumFrameDescriptors;
+    uint8_t bmFlags;
+    uint8_t bDefaultFrameIndex;
+    uint8_t bAspectRatioX;
+    uint8_t bAspectRatioY;
+    uint8_t bmInterlaceFlags;
+    uint8_t bCopyProtect;
+} uvc_desc_vs_format_mjpeg_t;
+
+typedef struct __attribute__((packed)) uvc_desc_vs_frame_mjpeg {
+    uint8_t bLength;
+    uint8_t bDescriptorType;
+    uint8_t bDescriptorSubtype;
+    uint8_t bFrameIndex;
+    uint8_t bmCapabilities;
+    uint_le16_t wWidth;
+    uint_le16_t wHeight;
+    uint_le32_t dwMinBitRate;
+    uint_le32_t dwMaxBitRate;
+    uint_le32_t dwMaxVideoFrameBufferSize;
+    uint_le32_t dwDefaultFrameInterval;
+    uint8_t bFrameIntervalType;
+    uint_le32_t dwFrameInterval[];
+} uvc_desc_vs_frame_mjpeg_t;
 
 #define ZUSB_REQ_CS_SET_CUR   0x01
 #define ZUSB_REQ_CS_GET_CUR   0x81
@@ -214,7 +247,7 @@ void disp_video_cs_request(void *buf)
            zusb_le32toh(uvcctrl->dwMaxPayloadTransferSize));
 }
 
-void video_test(int epin, int videosize, int frames, int verbose, int resolution)
+void video_test(int epin, int videosize, int frames, int verbose, int resolution, int mjpeg)
 {
     int config = 1;
     int use_config = 0;
@@ -236,6 +269,18 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
     case 1:
         vsize_w = 320;
         vsize_h = 240;
+        break;
+    case 2:
+        vsize_w = 640;
+        vsize_h = 480;
+        break;
+    case 3:
+        vsize_w = 800;
+        vsize_h = 600;
+        break;
+    case 4:
+        vsize_w = 1280;
+        vsize_h = 720;
         break;
     }
 
@@ -274,15 +319,30 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
         } else if (use_intf_subclass == 2) {    // Video Streaming Interface
             switch (desc[1]) {
             case ZUSB_DESC_CS_INTERFACE:
-                if (desc[2] == 0x04) {          // VS_FORMAT_UNCOMPRESSED
-                    uvc_format_uncompressed_t *dformat = (uvc_format_uncompressed_t *)desc;
+                if (!mjpeg && desc[2] == 0x04) {            // VS_FORMAT_UNCOMPRESSED
+                    uvc_desc_vs_format_uncompressed_t *dformat = (uvc_desc_vs_format_uncompressed_t *)desc;
                     current_format_id = dformat->bFormatIndex;
                     if (memcmp(dformat->guidFormat, guid_yuy2, sizeof(guid_yuy2)) == 0) {
                         use_format_id = current_format_id;
                     }
-                } else if (desc[2] == 0x05 &&   // VS_FRAME_UNCOMPRESSED
+                } else if (!mjpeg && desc[2] == 0x05 &&     // VS_FRAME_UNCOMPRESSED
                            current_format_id == use_format_id) {
-                    uvc_frame_uncompressed_t *dframe = (uvc_frame_uncompressed_t *)desc;
+                    uvc_desc_vs_frame_uncompressed_t *dframe = (uvc_desc_vs_frame_uncompressed_t *)desc;
+                    printf("frame id %d ", dframe->bFrameIndex);
+                    printf("%d x %d ", zusb_le16toh(dframe->wWidth), zusb_le16toh(dframe->wHeight));
+                    printf("%ldbps", zusb_le32toh(dframe->dwMaxBitRate));
+                    printf("\n");
+                    if (zusb_le16toh(dframe->wWidth) == vsize_w &&
+                        zusb_le16toh(dframe->wHeight) == vsize_h) {
+                        use_frame_id = dframe->bFrameIndex;
+                    }
+                } else if (mjpeg && desc[2] == 0x06) {      // VS_FORMAT_MJPEG
+                    uvc_desc_vs_format_mjpeg_t *dformat = (uvc_desc_vs_format_mjpeg_t *)desc;
+                    current_format_id = dformat->bFormatIndex;
+                    use_format_id = current_format_id;
+                } else if (mjpeg && desc[2] == 0x07 &&      // VS_FRAME_MJPEG
+                           current_format_id == use_format_id) {
+                    uvc_desc_vs_frame_mjpeg_t *dframe = (uvc_desc_vs_frame_mjpeg_t *)desc;
                     printf("frame id %d ", dframe->bFrameIndex);
                     printf("%d x %d ", zusb_le16toh(dframe->wWidth), zusb_le16toh(dframe->wHeight));
                     printf("%ldbps", zusb_le32toh(dframe->dwMaxBitRate));
@@ -314,6 +374,7 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
     disp_video_cs_request(uvcctrl);
     uvcctrl->bFormatIndex = use_format_id;
     uvcctrl->bFrameIndex = use_frame_id;
+    uvcctrl->dwFrameInterval = zusb_htole32(10000000 / 30);  // 30fps
     uvcctrl->dwMaxPayloadTransferSize = zusb_htole32(1024);
 
     printf("SET_CUR: ");
@@ -387,13 +448,16 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
     int ndesc;      // 1画面分のデータを取得するのに必要なディスクリプタ数
 
     switch (videosize) {
-    default:
     case 0:
         ndesc = 1024;
         break;
     case 1:
+    default:
         ndesc = 2048;
         break;
+    }
+    if (mjpeg) {
+        ndesc *= 2;
     }
 
     uint8_t *wbuf[2];
@@ -415,21 +479,23 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
 
     printf("start\n");
 
-    switch (resolution) {
-    case 0:     // no display
-        break;
-    default:
-    case 1:     // 256x256
-        _iocs_crtmod(14);
-        _iocs_g_clr_on();
-        break;
-    case 2:     // 512x512
-        _iocs_crtmod(12);
-        _iocs_g_clr_on();
-        break;
-    }
+    if (!mjpeg) {
+        switch (resolution) {
+        case 0:     // no display
+            break;
+        default:
+        case 1:     // 256x256
+            _iocs_crtmod(14);
+            _iocs_g_clr_on();
+            break;
+        case 2:     // 512x512
+            _iocs_crtmod(12);
+            _iocs_g_clr_on();
+            break;
+        }
 
-    yuv2rgbinit();
+        yuv2rgbinit();
+    }
 
     // バッファにデータを入力する
     zusb_set_ep_region_isoc(epin, wbuf[0], desc[0], ndesc);
@@ -437,6 +503,8 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
 
     struct iocs_time tm1, tm2;
     tm1 = _iocs_ontime();
+
+    int count = 0;
 
     int s = 1;
     for (int f = 0; (frames == 0) || (f < frames); f++) {
@@ -473,12 +541,20 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
             total += desc[s][i].actual - buf[1];    // stream headerを除いたデータ長
             if (verbose) printf("%x", buf[0] & 0xf);
             if (buf[0] & 2) {                       // End of Frame
-                if (total == vsize_w * vsize_h * 2) {
-                    firstdesc = head;               // 1画面分のデータの後にEOFが来たので検索完了
-                    break;
+                if (mjpeg) {
+                    if (firstdesc >= 0) {
+                        break;                      // MJPEGの場合は長さが不定
+                    }
+                    firstdesc = i + 1;              // 最初のフレームのEOFの次を取得フレームとする
+                    total = 0;
+                } else {
+                    if (total == vsize_w * vsize_h * 2) {
+                        firstdesc = head;           // 1画面分のデータの後にEOFが来たので検索完了
+                        break;
+                    }
+                    head = i + 1;                   // 不完全なデータだったので次のフレームを探す
+                    total = 0;
                 }
-                head = i + 1;                       // 不完全なデータだったので次のフレームを探す
-                total = 0;
             }
         }
         if (verbose) {
@@ -493,6 +569,46 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
             continue;
         }
         if (resolution == 0) {  // 画面表示しない
+            continue;
+        }
+
+        if (mjpeg) {            // MJPEGの場合はJPEGデータをファイルに保存する
+            FILE *fp = NULL;
+            int first = 1;
+            for (int i = firstdesc; i < ndesc; i++) {
+                int size = desc[s][i].actual;
+                if (size == 0) {
+                    continue;
+                }
+                uint8_t *buf = wbuf[s] + i * use_payload;
+                int end = buf[0] & 2;
+                size -= buf[1];         // stream headerを飛ばす
+                buf += buf[1];
+
+                if (first) {
+                    if (buf[0] == 0xd8 && buf[1] == 0xff) {
+                        char name[100];
+                        sprintf(name, "video%03d.jpg", count++);
+                        fp = fopen(name, "wb");
+                        printf("writing %s\n", name);
+                    } else {
+                        printf("ignore frame\n");
+                        break;
+                    }
+                    first = 0;
+                }
+
+                for (int j = 0; j < size; j += 2) {
+                    fputc(buf[j + 1], fp);
+                    fputc(buf[j], fp);
+                }
+                if (end) {
+                    break;
+                }
+            }
+            if (fp) {
+                fclose(fp);
+            }
             continue;
         }
 
