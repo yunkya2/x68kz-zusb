@@ -162,7 +162,13 @@ int disp_descriptors(int devid, int type, uint8_t *desc, void *arg)
             printf(" Interrupt");
             break;
         }
-        printf(" MaxPacket:%d", zusb_le16toh(dendp->wMaxPacketSize));
+        uint16_t maxpacket = zusb_le16toh(dendp->wMaxPacketSize);
+        uint16_t packetmul = ((maxpacket >> 11) & 3) + 1;
+        maxpacket &= 0x7ff;
+        printf(" MaxPacket:%d", maxpacket);
+        if (packetmul > 1) {
+            printf("*%d=%d", packetmul, maxpacket * packetmul);
+        }
         printf("\n");
         break;
 
