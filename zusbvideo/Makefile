@@ -1,4 +1,4 @@
-TARGETS = zusb.x zusbhid.x zusbmsc.x zusbaudio.x zusbjoyc.x zusbcdplay.x
+TARGETS = zusbvideo.x
 OBJS = $(TARGETS:.x=.o)
 HEADERS = zusbmacro.h zusbtypes.h zusbregs.h
 HEADERPATH = ../include
