@@ -135,7 +135,7 @@ int main(int argc, char **argv)
 //////////////////////////////////////////////////////////////////////////////
 
 void yuv2rgbinit(void);
-uint32_t yuv2rgb(uint8_t *p);
+uint8_t *yuv2rgb(uint8_t *p, uint16_t *gv, int width);
 
 typedef struct __attribute__((packed)) uvc_desc_vc_header {
     uint8_t bLength;
@@ -614,8 +614,9 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
 
         // 見つかった1画面分のデータを表示する
         uint16_t *gv = (uint16_t *)0xc00000;
-        int x = 0;
-        int y = 0;
+        uint16_t *gh = gv;
+        int xr = vsize_w;
+        int yr = vsize_h;
         int once = false;
         for (int i = firstdesc; i < ndesc; i++) {
             int size = desc[s][i].actual;
@@ -631,12 +632,20 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
             uint8_t *buf = wbuf[s] + i * use_payload;
             size -= buf[1];         // stream headerを飛ばす
             buf += buf[1];
-            for (int j = 0; j < size; j += 4) {
-                *(uint32_t *)&gv[x + y * 512] = yuv2rgb(&buf[j]);
-                x += 2;
-                if (x == vsize_w) {
-                    x = 0;
-                    if (++y >= vsize_h) {
+            size /= 2;
+
+            while (size > 0) {
+                int w = xr > size ? size : xr;
+                buf = yuv2rgb(buf, gh, w);
+                xr -= w;
+                gh += w;
+                size -= w;
+                if (xr <= 0) {
+                    xr = vsize_w;
+                    yr--;
+                    gv += 512;
+                    gh = gv;
+                    if (yr <= 0) {
                         i = ndesc;
                         break;
                     }
@@ -690,38 +699,40 @@ void yuv2rgbinit(void)
 }
 
 // YUY2データをRGB 2ピクセルに変換する
-uint32_t yuv2rgb(uint8_t *p)
+uint8_t *yuv2rgb(uint8_t *p, uint16_t *gv, int width)
 {
-    uint32_t result;
     int16_t r, g, b;
 
-    int16_t vr = vrtbl[p[2]];
-    int16_t vg = vgtbl[p[2]];
-    int16_t ug = ugtbl[p[0]];
-    int16_t ub = ubtbl[p[0]];
-    int16_t y0 = ytbl[p[1]];
-    int16_t y1 = ytbl[p[3]];
+    while (width > 0) {
+        int16_t vr = vrtbl[p[2]];
+        int16_t vg = vgtbl[p[2]];
+        int16_t ug = ugtbl[p[0]];
+        int16_t ub = ubtbl[p[0]];
+        int16_t y0 = ytbl[p[1]];
+        int16_t y1 = ytbl[p[3]];
+        p += 4;
+        width -= 2;
 
-    // 5bit分のみを用いて 0x0000～0x1f00 の範囲にクリッピングする(下位8bitは0)
-#define clip(x) ((x < 0) ? 0 : ((x > 0x1f00) ? 0x1f00 : x)) & ~0xff;
+        // 5bit分のみを用いて 0x0000～0x1f00 の範囲にクリッピングする(下位8bitは0)
+        #define clip(x) ((x < 0) ? 0 : ((x > 0x1f00) ? 0x1f00 : x)) & ~0xff;
 
-    r = y0 + vr;
-    r = clip(r)
-    g = y0 - ug - vg;
-    g = clip(g)
-    b = y0 + ub;
-    b = clip(b)
-    // 0x0000～0x1f00の範囲にクリッピングされたR,G,Bの値を16bitにまとめる(1ピクセル目)
-    result = (b >> (8 - 1)) | (r >> (8 - 6)) | (g << (11- 8));
+        r = y0 + vr;
+        r = clip(r)
+        g = y0 - ug - vg;
+        g = clip(g)
+        b = y0 + ub;
+        b = clip(b)
+        // 0x0000～0x1f00の範囲にクリッピングされたR,G,Bの値を16bitにまとめる(1ピクセル目)
+        *gv++ = (b >> (8 - 1)) | (r >> (8 - 6)) | (g << (11- 8));
 
-    r = y1 + vr;
-    r = clip(r)
-    g = y1 - ug - vg;
-    g = clip(g)
-    b = y1 + ub;
-    b = clip(b)
-    result <<= 16;
-    // 0x0000～0x1f00の範囲にクリッピングされたR,G,Bの値を16bitにまとめる(2ピクセル目)
-    result |= (b >> (8 - 1)) | (r >> (8 - 6)) | (g << (11- 8));
-    return result;
+        r = y1 + vr;
+        r = clip(r)
+        g = y1 - ug - vg;
+        g = clip(g)
+        b = y1 + ub;
+        b = clip(b)
+        // 0x0000～0x1f00の範囲にクリッピングされたR,G,Bの値を16bitにまとめる(2ピクセル目)
+        *gv++ = (b >> (8 - 1)) | (r >> (8 - 6)) | (g << (11- 8));
+    }
+    return p;
 }
