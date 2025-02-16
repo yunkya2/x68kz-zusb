@@ -680,59 +680,141 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
 //  G = clip((298 * (Y - 16) - 100 * (U - 128) - 208 * (V - 128) + 128) >> 8)
 //  B = clip((298 * (Y - 16) + 516 * (U - 128) + 128) >> 8)
 
-int16_t vrtbl[256];
-int16_t vgtbl[256];
-int16_t ugtbl[256];
-int16_t ubtbl[256];
-int16_t ytbl[256];
+int16_t tbl_rv[256];
+int16_t tbl_bu[256];
+int16_t tbl_guv[2][256];
+int16_t tbl_y[256];
+
+uint8_t tbl_rb[2][256][256];
+uint16_t tbl_g[256];
 
 // Y,U,V各要素の乗算済みテーブルを作る(RGB各5bitずつしか使わないので8で割っておく)
 void yuv2rgbinit(void)
 {
     for (int i = 0; i < 256; i++) {
-        vrtbl[i] = 409 * (i - 128) / 8;
-        vgtbl[i] = 208 * (i - 128) / 8;
-        ugtbl[i] = 100 * (i - 128) / 8;
-        ubtbl[i] = 516 * (i - 128) / 8;
-        ytbl[i] = (298 * (i - 16) + 128) / 8;
+        tbl_rv[i] = 409 * (i - 128) / 8;
+        tbl_bu[i] = 516 * (i - 128) / 8;
+        tbl_guv[0][i] = 100 * (i - 128) / 8;    // gu
+        tbl_guv[1][i] = 208 * (i - 128) / 8;    // gv
+        tbl_y[i] = (298 * (i - 16) + 128) / 8;
     }
+
+    // Y,V -> R, Y,U -> B に直接変換するテーブル
+    for (int uv = 0; uv < 256; uv++) {
+        for (int y = 0; y < 256; y++) {
+            int16_t r = (tbl_y[y] + tbl_rv[uv]) >> 8;
+            int16_t b = (tbl_y[y] + tbl_bu[uv]) >> 7;
+            // クリッピング処理も事前に行う
+            r = (r < 0) ? 0 : ((r > 0x1f) ? 0x1f : r);
+            b = (b < 0) ? 0 : ((b > 0x3f) ? 0x3f : b);
+            tbl_rb[0][uv][y] = r;
+            tbl_rb[1][uv][y] = b;
+        }
+    }
+
+    // Y,U,Vの演算後にクリッピング、シフト処理後のGの値を得るテーブル
+    for (int i = 0; i < 128; i++) {
+        int r = i > 0x1f ? 0x1f : i;
+        tbl_g[i] = (r << 11) >> 6;
+    }    
 }
 
 // YUY2データをRGB 2ピクセルに変換する
 uint8_t *yuv2rgb(uint8_t *p, uint16_t *gv, int width)
 {
+#if 0
     int16_t r, g, b;
-
     while (width > 0) {
-        int16_t vr = vrtbl[p[2]];
-        int16_t vg = vgtbl[p[2]];
-        int16_t ug = ugtbl[p[0]];
-        int16_t ub = ubtbl[p[0]];
-        int16_t y0 = ytbl[p[1]];
-        int16_t y1 = ytbl[p[3]];
-        p += 4;
-        width -= 2;
+        int16_t r_v = tbl_rv[p[2]];
+        int16_t b_u = tbl_bu[p[0]];
+        int16_t g_u = tbl_guv[0][p[2]];
+        int16_t g_v = tbl_guv[1][p[2]];
+        int16_t y0 = tbl_y[p[1]];
+        int16_t y1 = tbl_y[p[3]];
 
         // 5bit分のみを用いて 0x0000～0x1f00 の範囲にクリッピングする(下位8bitは0)
-        #define clip(x) ((x < 0) ? 0 : ((x > 0x1f00) ? 0x1f00 : x)) & ~0xff;
+        #define clip(x) ((x < 0) ? 0 : ((x > 0x1f00) ? 0x1f00 : x)) & ~0xff
 
-        r = y0 + vr;
-        r = clip(r)
-        g = y0 - ug - vg;
-        g = clip(g)
-        b = y0 + ub;
-        b = clip(b)
+        r = y0 + r_v;
+        r = clip(r);
+        g = y0 - g_u - g_v;
+        g = clip(g);
+        b = y0 + b_u;
+        b = clip(b);
         // 0x0000～0x1f00の範囲にクリッピングされたR,G,Bの値を16bitにまとめる(1ピクセル目)
         *gv++ = (b >> (8 - 1)) | (r >> (8 - 6)) | (g << (11- 8));
 
-        r = y1 + vr;
-        r = clip(r)
-        g = y1 - ug - vg;
-        g = clip(g)
-        b = y1 + ub;
-        b = clip(b)
+        r = y1 + r_v;
+        r = clip(r);
+        g = y1 - g_u - g_v;
+        g = clip(g);
+        b = y1 + b_u;
+        b = clip(b);
         // 0x0000～0x1f00の範囲にクリッピングされたR,G,Bの値を16bitにまとめる(2ピクセル目)
         *gv++ = (b >> (8 - 1)) | (r >> (8 - 6)) | (g << (11- 8));
+
+        p += 4;
+        width -= 2;
     }
-    return p;
+#else
+    asm __volatile__ (
+        "1:\n"
+        "moveq.l #0,%%d2\n"
+        "moveq.l #0,%%d3\n"
+
+        // Gの値を得る
+        "move.b %0@,%%d2\n"             // d2 = p[0] (U)
+        "move.b %0@(2),%%d3\n"          // d3 = p[2] (V)
+        "add.w  %%d2,%%d2\n"
+        "move.w %4@(0,%%d2:w),%%d4\n"   // d4 = g_u
+        "add.w  %%d3,%%d3\n"
+        "or.w   #0x0200,%%d3\n"         //  tbl_guv[1]のアドレスへ
+        "add.w  %4@(0,%%d3:w),%%d4\n"   // d4 += g_v
+
+        "moveq.l #0,%%d2\n"
+        "move.b %0@(1),%%d2\n"          // d2 = p[1] (Y0)
+        "add.w  %%d2,%%d2\n"
+        "move.w %5@(0,%%d2:w),%%d0\n"   // d0 = y0 (tbl_y[p[1]])
+        "sub.w  %%d4,%%d0\n"            // d0 = y0 - g_u - g_v
+        "lsr.w  #8,%%d0\n"
+        "add.w  %%d0,%%d0\n"
+        "move.w %6@(0,%%d0:w),%%d0\n"   // d0 = クリッピング、シフト後のG0
+
+        "moveq.l #0,%%d2\n"
+        "move.b %0@(3),%%d2\n"          // d2 = p[3] (Y1)
+        "add.w  %%d2,%%d2\n"
+        "move.w %5@(0,%%d2:w),%%d1\n"   // d1 = y1 (tbl_y[p[3]])
+        "sub.w  %%d4,%%d1\n"            // d1 = y1 - g_u - g_v
+        "lsr.w  #8,%%d1\n"
+        "add.w  %%d1,%%d1\n"
+        "move.w %6@(0,%%d1:w),%%d1\n"   // d1 = クリッピング、シフト後のG1
+
+        // R,Bの値を得る
+        "move.w %0@+,%%d2\n"            // d2 = p[0]:p[1]
+        "move.w %0@+,%%d3\n"            // d3 = p[2]:p[3]
+
+        "or.b %3@(0,%%d3:l),%%d1\n"     // d1 |= tbl_rb[0][p[2]][p[3]]  (G1,R1)
+        "lsl.w #6,%%d1\n"
+        "move.l %%d3,%%d4\n"            // d4 = p[2]:p[3]
+        "move.b %%d2,%%d4\n"            // d4 = p[2]:p[1]
+        "or.b %3@(0,%%d4:l),%%d0\n"     // d0 |= tbl_rb[0][p[2]][p[1]]  (G0,R0)
+        "lsl.w #6,%%d0\n"
+
+        "bset.l #16,%%d2\n"             //  tbl__rb[1]のアドレスへ
+        "or.b %3@(0,%%d2:l),%%d0\n"     // d0 |= tbl_rb[1][p[0]][p[1]]  (G0,R0,B0)
+        "move.b %%d3,%%d2\n"            // d2 = p[0]:p[3]
+        "or.b %3@(0,%%d2:l),%%d1\n"     // d1 |= tbl_rb[1][p[0]][p[3]]  (G1,R1,B1)
+
+        // RGBのピクセル値を書き込む
+        "move.w %%d0,%2@+\n"
+        "move.w %%d1,%2@+\n"
+
+        "subq.w #2,%7\n"
+        "bhi    1b\n"
+        : "=a"(p) : "0"(p), "a"(gv), "a"(tbl_rb), "a"(tbl_guv), "a"(tbl_y), "a"(tbl_g), "d"(width)
+        : "%%d0", "%%d1", "%%d2", "%%d3", "%%d4"
+    );
+#endif
+
+return p;
 }
