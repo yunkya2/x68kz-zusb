@@ -1057,10 +1057,12 @@ int main(int argc, char **argv)
         .current_iface = -1,
     };
     int hid_report = false;
+    int devvid = -1;
+    int devpid = -1;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0) {
-            printf("Usage: %s [-h][-v][-r] [devid]\n", argv[0]);
+            printf("Usage: %s [-h][-v][-r] [devid | vid:pid]\n", argv[0]);
             printf(" -v: verbose (dump descriptor data)\n");
             printf(" -r: show HID report descriptor\n");
             return 0;
@@ -1068,6 +1070,9 @@ int main(int argc, char **argv)
             arg.verbose = true;
         } else if (strcmp(argv[i], "-r") == 0) {
             hid_report = true;
+        } else if (strchr(argv[i], ':') && ((devvid < 0) || (devpid < 0))) {
+            devvid = strtol(argv[i], NULL, 16);
+            devpid = strtol(strchr(argv[i], ':') + 1, NULL, 16);
         } else if (arg.devid < 0) {
             arg.devid = strtol(argv[i], NULL, 0);
         }
@@ -1093,6 +1098,10 @@ int main(int argc, char **argv)
     if (arg.verbose) {
         int version = zusb_version();
         printf("ZUSB version:%x.%02x\n", version >> 8, version & 0xff);
+    }
+
+    if (devvid >= 0 && devpid >= 0) {
+        arg.devid = zusb_find_device_with_vid_pid(devvid, devpid, 0);
     }
 
     if (arg.devid < 0) {
