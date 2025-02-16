@@ -51,7 +51,7 @@ int main(int argc, char **argv)
         if (strcmp(argv[i], "-h") == 0) {
             printf("Usage: %s [-h][-v][-m][-r<resolution>][-s<videosize>] [devid | vid:pid] [frames]\n", argv[0]);
             printf(" <resolution>: 0=no display 1=256x256(default) 2=512x512\n");
-            printf(" <video size>: 0=160x120(default) 1=320x240\n");
+            printf(" <video size>: 0=160x120(default) 1=320x240 2=640x480 3=800x600 4=1280x720\n");
             return 0;
         } else if (strncmp(argv[i], "-v", 2) == 0) {
             verbose = true;
