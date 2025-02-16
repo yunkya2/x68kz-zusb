@@ -575,6 +575,8 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
         if (mjpeg) {            // MJPEGの場合はJPEGデータをファイルに保存する
             FILE *fp = NULL;
             int first = 1;
+            char fname[100];
+            fname[0] = '\0';
             for (int i = firstdesc; i < ndesc; i++) {
                 int size = desc[s][i].actual;
                 if (size == 0) {
@@ -587,10 +589,9 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
 
                 if (first) {
                     if (buf[0] == 0xd8 && buf[1] == 0xff) {
-                        char name[100];
-                        sprintf(name, "video%03d.jpg", count++);
-                        fp = fopen(name, "wb");
-                        printf("writing %s\n", name);
+                        sprintf(fname, "video%03d.jpg", count++);
+                        fp = fopen(fname, "wb");
+                        printf("writing %s\n", fname);
                     } else {
                         printf("ignore frame\n");
                         break;
@@ -598,10 +599,18 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
                     first = 0;
                 }
 
-                for (int j = 0; j < size; j += 2) {
-                    fputc(buf[j + 1], fp);
-                    fputc(buf[j], fp);
+                uint8_t bebuf[1024];
+                uint8_t *p0 = buf;
+                uint8_t *p1 = bebuf;
+                for (int j = 0; j < size; j += 8, p0 += 8, p1 += 8) {
+                    __asm__ volatile (
+                        "movep.l %0@(0),%%d0\n"
+                        "movep.l %0@(1),%%d1\n"
+                        "movep.l %%d0,%1@(1)\n"
+                        "movep.l %%d1,%1@(0)\n"
+                    : : "a"(p0), "a"(p1) : "%d0", "%d1");
                 }
+                fwrite(bebuf, size, 1, fp);
                 if (end) {
                     break;
                 }
