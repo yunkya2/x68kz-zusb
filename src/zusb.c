@@ -1073,7 +1073,7 @@ int main(int argc, char **argv)
         } else if (strchr(argv[i], ':') && ((devvid < 0) || (devpid < 0))) {
             devvid = strtol(argv[i], NULL, 16);
             devpid = strtol(strchr(argv[i], ':') + 1, NULL, 16);
-        } else if (arg.devid < 0) {
+        } else if (arg.devid < 0 && devvid < 0 && devpid < 0) {
             arg.devid = strtol(argv[i], NULL, 0);
         }
     }
