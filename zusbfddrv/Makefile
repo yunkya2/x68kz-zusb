@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2024 Yuichi Nakamura (@yunkya2)
+# Copyright (c) 2025 Yuichi Nakamura (@yunkya2)
 #
 # The MIT License (MIT)
 #
@@ -33,19 +33,24 @@ CFLAGS = -g -m68000 -I. -Os -DGIT_REPO_VERSION=\"$(GIT_REPO_VERSION)\"
 CFLAGS += -I../include
 ASFLAGS = -m68000 -I.
 
+TARGETS = zusbfddrv.sys zusbfdboot1.hds zusbfdboot2.hds zusbfdformat.x
+HEADERS = zusbfddrv.h
+LDFLAGS = -nostartfiles -s
+LIBS =
+
 ifneq ($(DEBUG),)
 CFLAGS += -DDEBUG
 endif
 
-all: zusbfddrv.sys zusbfdboot.hds zusbfdboot2.hds zusbfdformat.x
+all: $(TARGETS)
 
-zusbfdboot.hds: zusbfdboot.bin bootloader.bin HUMAN.SYS
-	./createhds.py $@ bootloader.bin HUMAN.SYS zusbfdboot.bin
+zusbfdboot1.hds: zusbfdboot1.bin bootloader.bin HUMAN.SYS
+	./createhds.py $@ bootloader.bin HUMAN.SYS zusbfdboot1.bin
 
 zusbfdboot2.hds: zusbfdboot2.bin bootloader.bin HUMAN.SYS
 	./createhds.py $@ bootloader.bin HUMAN.SYS zusbfdboot2.bin
 
-zusbfdboot.bin: zusbfdboot.sys
+zusbfdboot1.bin: zusbfdboot1.sys
 	./fixupsys.py $< $@
 
 zusbfdboot2.bin: zusbfdboot2.sys
@@ -54,38 +59,40 @@ zusbfdboot2.bin: zusbfdboot2.sys
 bootloader.bin: bootloader.o
 	$(OBJCOPY) -O binary $< $@
 
-zusbfdboot.sys: head_boot.o zusbfddrv_boot.o
-	$(LD) -o $@ $^ -nostartfiles -s
+zusbfdboot1.sys: head_boot.o zusbfddrv_boot1.o
+	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 zusbfdboot2.sys: head_boot.o zusbfddrv_boot2.o
-	$(LD) -o $@ $^ -nostartfiles -s
+	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 zusbfddrv.sys: head.o zusbfddrv.o
-	$(LD) -o $@ $^ -nostartfiles -s
+	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 zusbfdformat.x: zusbfdformat.o
-	$(LD) -o $@ $^ -s
+	$(LD) -s -o $@ $^ $(LIBS)
 
 head_boot.o: head.S
 	$(AS) $(ASFLAGS) -o $@ -c $< -DCONFIG_BOOTDRIVER
 
-zusbfddrv_boot.o: zusbfddrv.c
+zusbfddrv_boot1.o: zusbfddrv.c $(HEADERS)
 	$(CC) $(CFLAGS) -o $@ -c $< -DCONFIG_BOOTDRIVER
 
-zusbfddrv_boot2.o: zusbfddrv.c
+zusbfddrv_boot2.o: zusbfddrv.c $(HEADERS)
 	$(CC) $(CFLAGS) -o $@ -c $< -DCONFIG_BOOTDRIVER -DCONFIG_DRIVES=2
 
-zusbfddrv.o: zusbfddrv.h
-zusbfddrv_boot.o: zusbfddrv.h
-zusbfddrv_boot2.o: zusbfddrv.h
-
-%.o: %.c
+%.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $<
 
 %.o: %.S
 	$(AS) $(ASFLAGS) -c $<
 
-clean:
-	-rm -f *.o *.sys *.elf* *.x *.bin *.hds
+install: ../build
+	cp -p $(filter %.x,$(TARGETS)) ../build/bin
+	cp -p $(filter %.sys,$(TARGETS)) ../build/sys
+	cp -p $(filter %.hds,$(TARGETS)) ../build
+	cp -p README.md ../build/doc/zusbfddrv.md
 
-.PHONY: all clean release
+clean:
+	-rm -f $(TARGETS) *.o *.sys *.elf *.x *.bin
+
+.PHONY: all clean install

@@ -21,37 +21,24 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-CROSS = m68k-xelf-
-CC = $(CROSS)gcc
-AS = $(CROSS)gcc
-LD = $(CROSS)gcc
-OBJCOPY = $(CROSS)objcopy
+SUBDIRS = src zusbvideo zusbether zusbfddrv zusbscsi
 
 GIT_REPO_VERSION=$(shell git describe --tags --always)
 
-CFLAGS = -g -m68000 -I. -Os -DGIT_REPO_VERSION=\"$(GIT_REPO_VERSION)\"
-CFLAGS += -I../include
-ASFLAGS = -m68000 -I.
+all:
+	-for d in $(SUBDIRS); do $(MAKE) -C $$d all; done
 
-TARGETS = zusb.x zusbhid.x zusbmsc.x zusbaudio.x zusbjoyc.x zusbcdplay.x
-OBJS = $(TARGETS:.x=.o)
-HEADERS = zusbmacro.h zusbtypes.h zusbregs.h
-LDFLAGS = -s
-LIBS =
-
-all: $(TARGETS)
-
-%.x: %.o
-	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
-
-%.o: %.c $(HEADERS)
-	$(CC) $(CFLAGS) -c $<
-
-install: ../build
-	cp -p $(TARGETS) ../build/bin
+install: all
+	rm -rf build
+	mkdir build && (cd build && mkdir doc bin sys)
+	-for d in $(SUBDIRS); do $(MAKE) -C $$d install; done
+	mkdir -p build/sdk && (cd build/sdk && mkdir doc include)
+	cp -p include/*.h build/sdk/include
+	cp -p ZUSB-api.md ZUSB-specs.md build/sdk/doc
+	(cd build && xdftool.py c zusb-$(GIT_REPO_VERSION).xdf bin sys sdk doc)
 
 clean:
-	rm -f $(TARGETS) $(OBJS) *.elf
+	-rm -rf build
+	-for d in $(SUBDIRS); do $(MAKE) -C $$d clean; done
 
-.NOTINTERMEDIATE: $(OBJS)
 .PHONY: all clean install

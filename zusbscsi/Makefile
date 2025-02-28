@@ -33,28 +33,34 @@ CFLAGS = -g -m68000 -I. -Os -DGIT_REPO_VERSION=\"$(GIT_REPO_VERSION)\"
 CFLAGS += -I../include
 ASFLAGS = -m68000 -I.
 
+TARGETS = zusbscsi.sys zusbmodrv.sys
+HEEADERS = zusbscsi.h
+LDFLAGS = -nostartfiles -s
+LIBS =
+
 ifneq ($(DEBUG),)
 CFLAGS += -DDEBUG
 endif
 
-all: zusbscsi.sys zusbmodrv.sys
+all: $(TARGETS)
 
 zusbscsi.sys: head_scsi.o zusbscsi.o scsiiocs.o
-	$(LD) -o $@ $^ -nostartfiles -s
+	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 zusbmodrv.sys: head_modrv.o zusbmodrv.o
-	$(LD) -o $@ $^ -nostartfiles -s
+	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-zusbscsi.o: zusbscsi.h
-zusbmodrv.o: zusbscsi.h
-
-%.o: %.c
+%.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $<
 
 %.o: %.S
 	$(AS) $(ASFLAGS) -c $<
 
-clean:
-	-rm -f *.o *.sys *.elf* *.x *.bin *.hds
+install: ../build
+	cp -p $(TARGETS) ../build/sys
+	cp -p README.md ../build/doc/zusbscsi.md
 
-.PHONY: all clean release
+clean:
+	-rm -f $(TARGETS) *.o *.elf
+
+.PHONY: all clean install

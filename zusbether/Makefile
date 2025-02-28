@@ -33,24 +33,32 @@ CFLAGS = -g -m68000 -I. -Os -DGIT_REPO_VERSION=\"$(GIT_REPO_VERSION)\"
 CFLAGS += -I../include
 ASFLAGS = -m68000 -I.
 
+TARGETS = zusbether.x
+OBJS = head.o $(TARGETS:.x=.o)
+HEADERS = zusbether.h
+LDFLAGS = -nostartfiles -s
+LIBS =
+
 ifneq ($(DEBUG),)
 CFLAGS += -DDEBUG
 endif
 
-all: zusbether.x
+all: $(TARGETS)
 
-zusbether.x: head.o zusbether.o
-	$(LD) -o $@ $^ -nostartfiles -s
+$(TARGETS): $(OBJS)
+	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-zusbether.o: zusbether.h
-
-%.o: %.c
+%.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $<
 
 %.o: %.S
 	$(AS) $(ASFLAGS) -c $<
 
-clean:
-	-rm -f *.o *.sys *.elf* *.x
+install: ../build
+	cp -p $(TARGETS) ../build/bin
+	cp -p README.md ../build/doc/zusbether.md
 
-.PHONY: all clean release
+clean:
+	-rm -f $(TARGETS) $(OBJS) *.elf
+
+.PHONY: all clean install
