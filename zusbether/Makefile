@@ -55,7 +55,7 @@ $(TARGETS): $(OBJS)
 	$(AS) $(ASFLAGS) -c $<
 
 install: ../build
-	cp -p $(TARGETS) ../build/bin
+	cp -p $(TARGETS) ../build/sys
 	cp -p README.md ../build/doc/zusbether.md
 
 clean:
