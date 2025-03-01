@@ -6,8 +6,6 @@ X68000 Z に接続した USB LAN アダプタを利用するためのデバイ�
 
 無償公開されている (株)計測技研製 Human68k 用 TCP/IP ドライバ [TCPPACKA](http://retropc.net/x68000/software/internet/kg/tcppacka/) を用いることで、X68000 Z をネットワークに接続できるようになります。
 
-利用には HACKER'S EDITION 上で ZUSB 対応を有効にしたエミュレータが必要です。
-
 ## 対応 USB LAN アダプタ
 
 このドライバは ASIX AX88772 チップを用いた USB LAN アダプタに対応しています。
@@ -105,7 +103,3 @@ TCP/IP ドライバ用ネットワークドライバの機能のうち、以下�
 ## 謝辞
 
 ネットワークドライバの実装方法に関しては、[Neptune-X 用ドライバ ether_ne.sys](http://retropc.net/x68000/software/hardware/neptune_x/ndrv/) (Shi-MAD 氏作) のソースコードを参考にさせていただきました。感謝します。
-
-## ライセンス
-
-zusbscsi.sys および zusbmodrv.sys は MIT ライセンスとします。

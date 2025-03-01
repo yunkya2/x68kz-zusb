@@ -4,8 +4,6 @@
 
 X68000 Z に接続した USB FDD を使用するためのデバイスドライバです。
 
-HACKER'S EDITION 上で ZUSB 対応を有効にしたエミュレータが必要です。
-
 ## 使用方法
 
 zusbfddrv.sys を X68000 Z で使用するシステムドライブにコピーして、CONFIG.SYS に以下の行を追加します。
@@ -15,16 +13,9 @@ DEVICE = zusbfddrv.sys [/u<ドライブ数>]
 ```
 
 * `/u<ドライブ数>` には、USB FDD のドライブ数を 1～4 の値で指定します。省略した場合は 1 となります。\
-指定した数のドライブ名が起動時に確保され、USB FDD が接続されると確保されたドライブ名に順次割り当てられます。
+起動時に USB FDD が接続されていると、最大で指定した数までドライブ名が割り当てられます。
 
 起動すると、以下のようなメッセージが表示されて USB FDD が利用できるようになります。
-
-```
-X68000 Z USB FDD device driver version xxxxxxxx
-ドライブ X: でUSBフロッピーディスクが利用可能です
-```
-
-起動時に既に USB FDD が接続されていた場合は、そのデバイスのプロダクト ID 文字列が合わせて表示されます。
 
 ```
 X68000 Z USB FDD device driver version xxxxxxxx
@@ -32,7 +23,6 @@ X68000 Z USB FDD device driver version xxxxxxxx
 ```
 
 ディスクへのアクセス中でなければ、起動後の USB FDD の取り外し、再接続も可能です。
-USB FDD を接続せずに起動して後から接続した場合も、zusbfddrv.sys が確保したドライブ名に空きがあれば、そのドライブ名に割り当てられて利用可能になります。
 
 ## 対応ディスクフォーマット
 
@@ -59,10 +49,6 @@ zusbfddrv.sys は、以下のディスクフォーマットに対応していま
 * USB FDD のサポートは Human68k の DOS コールのレベルで行われています。ディスクアクセス IOCS コール (_B_READ など) は対応していないため、IOCS コールを使ってディスクアクセスを行うアプリは USB FDD に対しては使用できません。
 * ディスクのフォーマットに FORMAT.X は使用できません (物理/論理フォーマットとも)。後述する zusbfdformat.x を使用してください。
 * ディスクのベリファイには対応していません。VERIFY ON を指定しても無視されます。
-
-## ライセンス
-
-本デバイスドライバおよび USB FDD フォーマッタは MIT ライセンスとします。
 
 ----
 ----
@@ -146,11 +132,11 @@ X68000 Z が起動する場合、エミュレータ上では 2 つの SDカー�
 ## 使用方法
 
 1. X68000 Z の Pseudo SCSI 機能設定手順に従って、USB メモリの SCSI ディスクイメージ (HDSファイル) から起動できるように設定しておきます。
-2. zusbfdboot.hds または zusbfdboot2.hds ファイルを USB メモリの X68000Z フォルダ内にコピーします (zusbfdboot.hds は USB FDD 1ドライブ版、zusbfdboot2.hds は 2ドライブ版です)。
+2. zusbfdboot1.hds または zusbfdboot2.hds ファイルを USB メモリの X68000Z フォルダ内にコピーします (zusbfdboot1.hds は USB FDD 1ドライブ版、zusbfdboot2.hds は 2ドライブ版です)。
 3. `X68000Z/pscsi.ini` ファイルを編集して、USB メモリにコピーしたディスクイメージから起動するように設定します。
     ```
     [pscsi]
-    ID0=zusbfdboot.hds   (または zusbfdboot2.hds)
+    ID0=zusbfdboot1.hds   (または zusbfdboot2.hds)
     ```
 4. X68000 Z に 2. の USB メモリと USB FDD を接続し、USB FDD に起動したいディスクを入れた状態で X68000 Z を起動します。
 5. USB FDD 内のディスクから起動します (起動しているように見えます)。
@@ -168,7 +154,7 @@ X68000 Z が起動する場合、エミュレータ上では 2 つの SDカー�
 
 起動後のドライブ構成は以下のようになります。
 
-* zusbfdboot.hds の場合
+* zusbfdboot1.hds の場合
   - A: USB FDD ドライブ
   - B: X68000 Z 本体のドライブ 0 (SDカード内のディスクイメージ)
   - C: X68000 Z 本体のドライブ 1 (SDカード内のディスクイメージ)

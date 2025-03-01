@@ -4,8 +4,6 @@
 
 X68000 Z に接続した USB MO ドライブや USB CD-ROM ドライブなどのマスストレージデバイスを SCSI IOCS コールから利用できるようにするためのデバイスドライバです。
 
-利用には HACKER'S EDITION 上で ZUSB 対応を有効にしたエミュレータが必要です。
-
 ## 使用方法
 
 zusbscsi.sys を X68000 Z で使用するシステムドライブにコピーして、CONFIG.SYS に以下の行を追加します。
@@ -77,7 +75,3 @@ DEVICE = zusbmodrv.sys [<オプション>]
   指定した SCSI ID の USB MO ドライブに対して SCSI デバイスドライバを組み込みます。
 
 オプション指定を省略すると、zusbscsi.sys で SCSI IOCS から利用できる USB MO ドライブのうち、まだ SCSI デバイスドライバが組み込まれていない SCSI ID を指定したのと同じ動作になります。
-
-## ライセンス
-
-zusbscsi.sys および zusbmodrv.sys は MIT ライセンスとします。
