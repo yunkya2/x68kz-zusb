@@ -49,6 +49,7 @@ all: $(TARGETS)
 
 install: ../build
 	cp -p $(TARGETS) ../build/bin
+	cp -p README.md ../build/doc/zusbtools.md
 
 clean:
 	rm -f $(TARGETS) $(OBJS) *.elf
