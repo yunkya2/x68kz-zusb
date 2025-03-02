@@ -184,6 +184,7 @@ static int send_cbw(const void *cmd, size_t cmd_len, int dir, size_t data_len)
   cbw->dir = dir;
   cbw->lun = 0;
   cbw->cmd_len = cmd_len;
+  memset(cbw->command, 0, sizeof(cbw->command));
   memcpy(cbw->command, cmd, cmd_len);
   return send_submit_wait(EP_BULK_OUT, cbw, sizeof(*cbw));
 }
@@ -205,56 +206,69 @@ static int receive_csw(void)
 static int connect_msc(void)
 {
   int devid = 0;
+  uint8_t subclass = 0x06;  // SCSI transparent command set
+  uint8_t protocol = 0x50;  // Bulk-only transport
 
   DPRINTF("connect_msc:\r\n");
 
-  // MSC, SCSI transparent command set, Bulk-only transport
-  while (devid = zusb_find_device_with_devclass(ZUSB_CLASS_MSC, 0x06, 0x50, devid)) {
-    DPRINTF("devid=%d ", devid);
-    zusb_desc_device_t *ddev = (zusb_desc_device_t *)zusbbuf;
-    if (zusb_get_descriptor(zusbbuf) > 0 &&
-        ddev->bDescriptorType == ZUSB_DESC_DEVICE) {
-      if ((zu->vid && zu->pid) &&
-          ((zu->vid != zusb_le16toh(ddev->idVendor)) ||
-           (zu->pid != zusb_le16toh(ddev->idProduct)))) {
-        DPRINTF("VID/PID mismatch (%04x:%04x != %04x:%04x)\r\n", zu->vid, zu->pid, 
-                zusb_le16toh(ddev->idVendor), zusb_le16toh(ddev->idProduct));
-        continue;   // VID,PID指定があるのに一致しない場合
+  while (1) {
+    // MSC, Bulk-only transport
+    while (devid = zusb_find_device_with_devclass(ZUSB_CLASS_MSC, subclass, protocol, devid)) {
+      DPRINTF("devid=%d ", devid);
+      zusb_desc_device_t *ddev = (zusb_desc_device_t *)zusbbuf;
+      if (zusb_get_descriptor(zusbbuf) > 0 &&
+          ddev->bDescriptorType == ZUSB_DESC_DEVICE) {
+        if ((zu->vid && zu->pid) &&
+            ((zu->vid != zusb_le16toh(ddev->idVendor)) ||
+             (zu->pid != zusb_le16toh(ddev->idProduct)))) {
+          DPRINTF("VID/PID mismatch (%04x:%04x != %04x:%04x)\r\n", zu->vid, zu->pid, 
+                  zusb_le16toh(ddev->idVendor), zusb_le16toh(ddev->idProduct));
+          continue;   // VID,PID指定があるのに一致しない場合
+        }
+        zu->iProduct = ddev->iProduct;
       }
-      zu->iProduct = ddev->iProduct;
+
+      // 見つかったデバイスに接続する
+      if (zusb_connect_device(devid, 1, ZUSB_CLASS_MSC, subclass, protocol, epcfg) <= 0) {
+        DPRINTF("connectinon failure. skip\r\n");
+        continue;
+      }
+      zu->subclass = subclass;
+      zu->protocol = protocol;
+
+      int msc_scsi_sendcmd(const void *cmd, int cmd_len, int dir, void *buf, int size);
+
+      // SCSI Inquiryコマンドを送ってperipheral device typeを調べる
+      struct iocs_inquiry inq;
+      scsi_inquiry_t cmd_inquiry = {
+        .cmd_code = SCSI_CMD_INQUIRY,
+        .alloc_length = sizeof(inq),
+      };
+      int res = msc_scsi_sendcmd(&cmd_inquiry, sizeof(cmd_inquiry), ZUSB_DIR_IN, &inq, sizeof(inq));
+      if (res != 0) {
+        DPRINTF("inquiry error\r\n");
+        zusb_disconnect_device();
+        continue;
+      }
+
+      DPRINTF("type=%02x\r\n", inq.unit);
+      if (!(inq.unit == 0x05 || inq.unit == 0x07) ||
+          (zu->devtype != 0 && zu->devtype != inq.unit)) {
+        // デバイスタイプがCD-ROMでもMOでもない または 指定されたデバイスタイプと一致しない
+        DPRINTF("device type mismatch\r\n");
+        zusb_disconnect_device();
+        continue;
+      }
+      zu->devtype = inq.unit;
+      return 0;
     }
 
-    // 見つかったデバイスに接続する
-    if (zusb_connect_device(devid, 1, ZUSB_CLASS_MSC, 0x06, 0x50, epcfg) <= 0) {
-      DPRINTF("connectinon failure. skip\r\n");
-      continue;
+    // SCSI transparent command setのデバイスが見つからない場合はATAPIを探す
+    if (subclass == 0x06) {
+      subclass = 0x02;    // ATAPI
+    } else {
+      break;              // ATAPIも見つからないのでエラー終了
     }
-
-    int msc_scsi_sendcmd(const void *cmd, int cmd_len, int dir, void *buf, int size);
-
-    // SCSI Inquiryコマンドを送ってperipheral device typeを調べる
-    struct iocs_inquiry inq;
-    scsi_inquiry_t cmd_inquiry = {
-      .cmd_code = SCSI_CMD_INQUIRY,
-      .alloc_length = sizeof(inq),
-    };
-    int res = msc_scsi_sendcmd(&cmd_inquiry, sizeof(cmd_inquiry), ZUSB_DIR_IN, &inq, sizeof(inq));
-    if (res != 0) {
-      DPRINTF("inquiry error\r\n");
-      zusb_disconnect_device();
-      continue;
-    }
-
-    DPRINTF("type=%02x\r\n", inq.unit);
-    if (!(inq.unit == 0x05 || inq.unit == 0x07) ||
-        (zu->devtype != 0 && zu->devtype != inq.unit)) {
-      // デバイスタイプがCD-ROMでもMOでもない または 指定されたデバイスタイプと一致しない
-      DPRINTF("device type mismatch\r\n");
-      zusb_disconnect_device();
-      continue;
-    }
-    zu->devtype = inq.unit;
-    return 0;
   }
 
   DPRINTF("device not found\r\n");
@@ -279,6 +293,11 @@ int msc_scsi_sendcmd(const void *cmd, int cmd_len, int dir, void *buf, int size)
   DPRINTF("sendcmd");
   for (int i = 0; i < cmd_len; i++) {
     DPRINTF(" %02x", ((uint8_t *)cmd)[i]);
+  }
+
+  // ATAPI subclassの場合は最低でも12バイトのコマンドを送る
+  if (zu->subclass == 0x02) {
+    cmd_len = cmd_len < 12 ? 12 : cmd_len;
   }
 
   while (1) {

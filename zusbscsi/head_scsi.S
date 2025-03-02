@@ -42,7 +42,7 @@ strategy:
 
     .global zusb_unit
 zusb_unit:                          // ユニットごとのZUSBデバイス機器情報
-    .space  8 * 4                   // struct zusb_unit の定義と一致させること
+    .space  10 * 4                  // struct zusb_unit の定義と一致させること
 
 interrupt_asm:
     movem.l %d1-%d2/%a0-%a2/%a5,%sp@-
