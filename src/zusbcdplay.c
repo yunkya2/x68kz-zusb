@@ -72,11 +72,13 @@ void audio_play(int epout, int samplerate, int volume, int scsiid, int startsect
     int use_config = 0;
     int use_intf_subclass = 0;
     int use_audio_stream_if = 0;
+    int use_audio_stream_altif = 0;
     int volume_unit_id = 0;
 
     // Class-Specific Interface Descriptor から設定値を取得する
 
     int current_if;
+    int current_altif;
     zusb_rewind_descriptor();
     while (zusb_get_descriptor(zusbbuf) > 0) {
         uint8_t *desc = zusbbuf;
@@ -86,6 +88,7 @@ void audio_play(int epout, int samplerate, int volume, int scsiid, int startsect
         } else if (desc[1] == ZUSB_DESC_INTERFACE) {
             zusb_desc_interface_t *dintf = (zusb_desc_interface_t *)desc;
             current_if = dintf->bInterfaceNumber;
+            current_altif = dintf->bAlternateSetting;
             use_intf_subclass = (dintf->bInterfaceClass == ZUSB_CLASS_AUDIO) ? dintf->bInterfaceSubClass : 0;
         }
         if (!use_config || !use_intf_subclass) {
@@ -119,6 +122,10 @@ void audio_play(int epout, int samplerate, int volume, int scsiid, int startsect
                 if ((dendp->bEndpointAddress & ZUSB_DIR_MASK) == ZUSB_DIR_OUT) {
                     use_audio_stream_if = current_if;   // OUT側EPを持つinterfaceを出力用interfaceとする
                 }
+                if (cs_if_desc[4] == 2 && cs_if_desc[6] == 16) {
+                    use_audio_stream_altif = current_altif;   // 16bit stereoのinterfaceを出力用alt interfaceとする
+                }
+
                 printf("EP 0x%02x ", dendp->bEndpointAddress);
                 printf("#ch:%d bit:%d", cs_if_desc[4], cs_if_desc[6]);
                 printf(" supported freq:");
@@ -134,7 +141,7 @@ void audio_play(int epout, int samplerate, int volume, int scsiid, int startsect
         }
     }
 
-    printf("audio_stream_if=%d volume_unit_id=%d\n", use_audio_stream_if, volume_unit_id);
+    printf("audio_stream_if=%d/%d volume_unit_id=%d\n", use_audio_stream_if, use_audio_stream_altif, volume_unit_id);
 
     if (volume_unit_id) {
 #define AUDIO_FEATURE_UNIT_CS_VOLUME        0x02
@@ -172,8 +179,8 @@ void audio_play(int epout, int samplerate, int volume, int scsiid, int startsect
                       epout, 3, &zusbbuf[0]);
     printf("sampling rate: %ldHz\n", zusb_le32toh(*(uint32_t *)&zusbbuf[0]));
 
-    // 出力用interfaceをalt interface #1に切り替える (音が出るようになる)
-    zusb->param = (use_audio_stream_if << 8) | 0x01;
+    // 出力用interfaceを16bit stereoのinterfaceに切り替える (音が出るようになる)
+    zusb->param = (use_audio_stream_if << 8) | use_audio_stream_altif;
     zusb_send_cmd(ZUSB_CMD_SETIFACE);
 
     //////////////////////////////////////////////////////////////////////////
