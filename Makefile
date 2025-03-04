@@ -32,13 +32,10 @@ install: all
 	rm -rf build
 	mkdir build && (cd build && mkdir doc bin sys)
 	-for d in $(SUBDIRS); do $(MAKE) -C $$d install; done
-	-for f in build/doc/*.md; do iconv -f utf-8 -t cp932 $$f | sed 's/$$/\r/' > $${f%.md}.txt && rm $$f; done
-
 	mkdir -p build/sdk && (cd build/sdk && mkdir doc include)
 	cp -p include/*.h build/sdk/include
 	cp -p ZUSB-api.md ZUSB-specs.md build/sdk/doc
-	-for f in build/sdk/doc/*.md; do iconv -f utf-8 -t cp932 $$f | sed 's/$$/\r/' > $${f%.md}.txt && rm $$f; done
-
+	./md2txtconv.py -r build/doc/*.md build/sdk/doc/*.md GIT_REPO_VERSION=$(GIT_REPO_VERSION)
 	(cd build && xdftool.py c zusb-$(GIT_REPO_VERSION).xdf bin sys sdk doc)
 
 clean:
