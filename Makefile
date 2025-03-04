@@ -31,12 +31,16 @@ all:
 install: all
 	rm -rf build
 	mkdir build && (cd build && mkdir doc bin sys)
+	cp README-release.md build/README.md
 	-for d in $(SUBDIRS); do $(MAKE) -C $$d install; done
 	mkdir -p build/sdk && (cd build/sdk && mkdir doc include)
 	cp -p include/*.h build/sdk/include
 	cp -p ZUSB-api.md ZUSB-specs.md build/sdk/doc
-	./md2txtconv.py -r build/doc/*.md build/sdk/doc/*.md GIT_REPO_VERSION=$(GIT_REPO_VERSION)
-	(cd build && xdftool.py c zusb-$(GIT_REPO_VERSION).xdf bin sys sdk doc)
+	./md2txtconv.py -r build/*.md build/doc/*.md build/sdk/doc/*.md GIT_REPO_VERSION=$(GIT_REPO_VERSION)
+	(cd build && xdftool.py c zusb-$(GIT_REPO_VERSION).xdf README.txt bin sys sdk doc)
+
+release: install
+	(cd build && zip -r ../zusb-$(GIT_REPO_VERSION).zip *)
 
 clean:
 	-rm -rf build

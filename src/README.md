@@ -167,3 +167,33 @@ zusbcdplay.x [-h][-v<volume>][-i<scsiid>] [devid | vid:pid] [track]
 
 * [zusbscsi.sys](zusbscsi/README.md) で認識した CD-ROM ドライブに入れた音楽 CD のオーディオデータを取得して USB Audio デバイスで再生します。
 * 実行前に、zusbscsi.sys で CD-ROM ドライブに SCSI ID を割り当てておく必要があります。
+
+
+## zusbjoyc - X68000 Z JOYCARD のテスト
+
+###  使用方法
+
+コマンドラインから以下のように実行します。
+
+```
+zusbjoyc.x [-s][-r]
+```
+
+以下のオプションを指定できます。
+
+* -s\
+  常駐します
+* -r\
+  常駐を解除します
+
+### 説明
+
+* 実行すると ZUIKI X68000 Z JOYCARD が接続されるのを待ちます
+  * Z JOYCARD (VID:0x33dd PID:0x0013) 専用です。他のコントローラは非対応です。
+* 接続すると、JOYCARD からの入力を 16進表示します。10 秒経つと終了します。
+* -s オプションを指定すると常駐して、ジョイカードの入力をキー入力に変換します。
+  * 十字キー: カーソルキー
+  * A, B ボタン : A, B
+  * RIGHT, LEFT ボタン : R, L
+  * START, SELECT ボタン : S, E
+* -r オプションを指定すると、常駐している zusbjoyc プロセスがいれば常駐解除します。
