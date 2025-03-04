@@ -29,11 +29,15 @@ import re
 import codecs
 import os
 
+# 定数の定義
 WIDTH = 76
-
 PRO_HEAD_CHARS = "。、〕〉》」』】〙〗"
 
 def get_display_width(text):
+    """
+    テキストの表示幅を計算する関数
+    ASCII文字は1、その他のUnicode文字は2として計算
+    """
     width = 0
     for char in text:
         if ord(char) < 128:
@@ -43,12 +47,17 @@ def get_display_width(text):
     return width
 
 def wrap_text(text, width):
+    """
+    テキストを指定された幅で折り返す関数
+    英数字が連続している単語の途中で改行しないようにする
+    """
     if not text.strip():
         return text
     text = text.rstrip("\n")
     leading_spaces = len(text) - len(text.lstrip(' '))
     next_leading_spaces = leading_spaces
 
+    # リスト項目のインデントを調整
     if m := re.match(r'( *)\* ', text):
         text = " " + text
         leading_spaces = len(m.group(1)) + 1
@@ -68,6 +77,7 @@ def wrap_text(text, width):
     for char in text.lstrip(' '):
         char_width = get_display_width(char)
         if char.isspace():
+            # スペースが見つかった場合、現在の単語を行に追加
             if current_width + word_width > width:
                 wrapped_lines.append(current_line)
                 leading_spaces = next_leading_spaces
@@ -82,6 +92,7 @@ def wrap_text(text, width):
             word_width = 0
         else:
             if ord(char) < 128:
+                # 英数字の場合、単語の途中で改行しないようにする
                 if current_width + word_width + char_width > width:
                     wrapped_lines.append(current_line)
                     leading_spaces = next_leading_spaces
@@ -93,7 +104,9 @@ def wrap_text(text, width):
                     word_buffer += char
                     word_width += char_width
             else:
+                # その他のUnicode文字は途中で改行してもよい
                 if word_width > 0:
+                    # まだ出力していない単語がある場合、行に追加
                     current_line += word_buffer
                     current_width += word_width
                     word_buffer = ""
@@ -101,6 +114,7 @@ def wrap_text(text, width):
 
                 if current_width + char_width > width:
                     if char in PRO_HEAD_CHARS:
+                        # 禁則処理
                         current_line += char
                         char = ""
                         char_width = 0
@@ -113,6 +127,7 @@ def wrap_text(text, width):
                     current_width += char_width
 
     if word_buffer:
+        # 最後の単語を行に追加
         if current_width + word_width > width:
             wrapped_lines.append(current_line)
             current_line = " " * leading_spaces + word_buffer
@@ -125,6 +140,9 @@ def wrap_text(text, width):
     return "\n".join(wrapped_lines) + "\n"
 
 def process_file(filename, remove_original, replacements):
+    """
+    ファイルを処理して変換する関数
+    """
     with codecs.open(filename, 'r', 'utf-8') as f:
         lines = f.readlines()
 
@@ -134,6 +152,7 @@ def process_file(filename, remove_original, replacements):
             w = get_display_width(line)
 
             if '```' in line:
+                # コードブロックの開始・終了を検出
                 nowrap = not nowrap
                 pos = line.find('```')
                 if pos == 0:
@@ -141,6 +160,7 @@ def process_file(filename, remove_original, replacements):
                 else:
                     line = line[:pos] + '-' * (WIDTH - pos - 1) + '\n'
             else:
+                # マークダウンの記法をテキストに変換
                 line = re.sub(r'`', '', line)
                 line = re.sub(r'\\$', '', line)
                 line = re.sub(r'\\<', '<', line)
@@ -152,19 +172,27 @@ def process_file(filename, remove_original, replacements):
                 line = re.sub(r'\*\*', '', line)
                 line = re.sub(r'\[([^]]*)\]\([^)]*\)', r'\1', line)
                 line = re.sub(r'(--*):', r'\1-', line)
+
+                # 可能であればテキストの折り返しを行う
                 if not re.search(r'.*\|.*\|', line) and not nowrap:
                     line = wrap_text(line, WIDTH)
 
+                # キーワード置換を行う
                 for keyword, value in replacements.items():
                     line = line.replace(keyword, value)
 
+            # 改行コードを変換してファイルに書き込む
             line = re.sub(r'\n', '\r\n', line)
             f.write(line)
 
+    # オプションに応じて元のファイルを削除する
     if remove_original:
         os.remove(filename)
 
 def print_usage():
+    """
+    使用法のヘルプメッセージを表示する関数
+    """
     print("Usage: md2txtconv.py [options] <input files>")
     print("Options:")
     print("  -r              Remove original .md files after conversion")
