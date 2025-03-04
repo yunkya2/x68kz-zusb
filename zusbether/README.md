@@ -6,12 +6,14 @@ X68000 Z に接続した USB LAN アダプタを利用するためのデバイ�
 
 無償公開されている (株)計測技研製 Human68k 用 TCP/IP ドライバ [TCPPACKA](http://retropc.net/x68000/software/internet/kg/tcppacka/) を用いることで、X68000 Z をネットワークに接続できるようになります。
 
+
 ## 対応 USB LAN アダプタ
 
 このドライバは ASIX AX88772 チップを用いた USB LAN アダプタに対応しています。
 動作確認は以下のデバイスでのみ行っていますが、同じコントローラを用いた他の USB LAN アダプタでも使えるかも知れません。
 
 * [LUA3-U2-ATX (BUFFALO)](https://www.buffalo.jp/product/detail/lua3-u2-atx.html) 
+
 
 ## 使用方法
 
@@ -43,6 +45,7 @@ DEVICE = zusbether.x <オプション>...
 X68000 Z USB Ethernet driver version xxxxxxxx
 USB LANアダプタ(AX88772  xx:xx:xx:xx:xx:xx)が利用可能です
 ```
+
 
 ## TCP/IP ドライバの使用方法
 
@@ -81,6 +84,7 @@ TCP/IP ドライバ [TCPPACKA](http://retropc.net/x68000/software/internet/kg/tc
     A> ifconfig lp0 up
     A> ifconfig en0 192.168.1.8 netmask 255.255.255.0 up
     ```
+
     (zusbether.x のネットワークインターフェース名は **en0** になります。TCPPACKA のドキュメントとは異なりますので注意してください)
 
     続いて、ネームサーバとデフォルトルートの設定を行います。
@@ -94,11 +98,13 @@ TCP/IP ドライバ [TCPPACKA](http://retropc.net/x68000/software/internet/kg/tc
     A> inetdconf +dns 192.168.1.1 +router 192.168.1.1
     ```
 
+
 ## 制限事項
 
 TCP/IP ドライバ用ネットワークドライバの機能のうち、以下のものは未実装です。
 * マルチキャスト対応
 * 統計情報読み出し
+
 
 ## 謝辞
 

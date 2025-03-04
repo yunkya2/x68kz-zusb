@@ -4,6 +4,7 @@
 
 X68000 Z ZUSB 用のサンプルアプリです。
 
+
 ## zusb.x - USB 機器の情報表示
 
 ### 使用方法
@@ -97,9 +98,10 @@ zusbmsc.x [-h] [devid | vid:pid] [sector] [count]
 * sector\
   ダンプ開始セクタ番号を指定します
 * count\
-ダンプするセクタ数を指定します (デフォルトは 1)
+  ダンプするセクタ数を指定します (デフォルトは 1)
 
 ### 説明
+
 * devid を指定して起動すると、その機器に接続して SCSI INQUIRY コマンドと READ CAPACITY コマンドを発行して情報を表示します
 * sector, countを指定すると、指定されたセクタ番号から指定されたセクタ数分をダンプ表示します。
 * MSC Bulk only transport (USB HDD や USB メモリ等) と CBI transport (USB FDD 等) に対応しています。
@@ -132,7 +134,9 @@ zusbaudio.x [-h][-r<sample rate>] [-v<volume>] [devid | vid:pid] [filename]
 ### 説明
 
 * devid、ファイル名を指定するとそのファイルを USB Audio デバイスで再生します
-* UAC クラスのデバイスであれば動作するはずですが、動作は UGREEN USB オーディオ 変換アダプタ でのみ確認しています。
+* 44100Hz 16bit ステレオ PCM に対応しているデバイスであれば動作するはずです。以下のデバイスで動作を確認しています。
+  * UGREEN USB オーディオ 変換アダプタ
+  * Roland UA-30
 
 
 ## zusbcdplay - USB CD-ROM ドライブと USB Audio デバイスを用いた音楽再生
@@ -160,5 +164,6 @@ zusbcdplay.x [-h][-v<volume>][-i<scsiid>] [devid | vid:pid] [track]
   再生するトラック番号 (省略すると CD のトラック番号一覧を表示します)
 
 ### 説明
+
 * [zusbscsi.sys](zusbscsi/README.md) で認識した CD-ROM ドライブに入れた音楽 CD のオーディオデータを取得して USB Audio デバイスで再生します。
 * 実行前に、zusbscsi.sys で CD-ROM ドライブに SCSI ID を割り当てておく必要があります。
