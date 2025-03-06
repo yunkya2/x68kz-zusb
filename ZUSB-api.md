@@ -122,7 +122,7 @@ ZUSB による USB デバイス制御のための API について説明しま�
 
 ## デバイス接続 API
 
-* int zusb_connect_device(int devid, int config, int devclass, int subclass, int protocol, zusb_endpoint_config_t epcfg[ZUSB_N_EP]);
+* int zusb_connect_device(int devid, int config, int devclass, int subclass, int protocol, zusb_endpoint_config_t *epcfg);
   * 説明
     * 指定したデバイス ID のデバイスが持つ特定のコンフィグレーション番号の、特定のデバイスクラス、サブクラス、プロトコルを持つインターフェースに接続します。
     * 接続後、接続したインターフェースが持つエンドポイントが利用できるように ZUSB のパイプコンフィグレーションレジスタを設定します。

@@ -28,7 +28,13 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
- extern "C" {
+extern "C" {
+#endif
+
+#ifdef __GNUC__
+#define ATTR_PACKED   __attribute__ ((packed))
+#else
+#define ATTR_PACKED
 #endif
 
 /*----------------------------------------------------------------------------
@@ -131,7 +137,7 @@ typedef int32_t   int_be32_t;
 #define ZUSB_REQ_CS_EP_OUT      (ZUSB_REQ_DIR_OUT|ZUSB_REQ_TYPE_CLASS|ZUSB_REQ_RCPT_ENDPOINT)
 #define ZUSB_REQ_CS_EP_IN       (ZUSB_REQ_DIR_IN |ZUSB_REQ_TYPE_CLASS|ZUSB_REQ_RCPT_ENDPOINT)
 
-typedef struct __attribute__((packed)) zusb_control_request_t {
+typedef struct ATTR_PACKED zusb_control_request_t {
   uint8_t bmRequestType;        /* +0 */
   uint8_t bRequest;             /* +1 */
   uint_le16_t wValue;           /* +2 */
@@ -156,13 +162,13 @@ typedef struct __attribute__((packed)) zusb_control_request_t {
 #define ZUSB_DESC_CS_ENDPOINT             0x25
 
 /* USB Descriptor Common Header */
-typedef struct __attribute__((packed)) zusb_desc_header {
+typedef struct ATTR_PACKED zusb_desc_header {
   uint8_t bLength;              /* +0 */
   uint8_t bDescriptorType;      /* +1 */
 } zusb_desc_header_t;
 
 /* USB Device Descriptor (0x01) */
-typedef struct __attribute__((packed)) zusb_desc_device_t {
+typedef struct ATTR_PACKED zusb_desc_device_t {
   uint8_t bLength;              /* +0 */
   uint8_t bDescriptorType;      /* +1 */
   uint_le16_t bcdUSB;           /* +2 */
@@ -180,7 +186,7 @@ typedef struct __attribute__((packed)) zusb_desc_device_t {
 } zusb_desc_device_t;
 
 /* USB Configuration Descriptor (0x02) */
-typedef struct __attribute__((packed)) zusb_desc_configuration {
+typedef struct ATTR_PACKED zusb_desc_configuration {
   uint8_t bLength;              /* +0 */
   uint8_t bDescriptorType;      /* +1 */
   uint_le16_t wTotalLength;     /* +2 */
@@ -192,14 +198,14 @@ typedef struct __attribute__((packed)) zusb_desc_configuration {
 } zusb_desc_configuration_t;
 
 /* USB String Descriptor (0x03) */
-typedef struct __attribute__((packed)) zusb_desc_string {
+typedef struct ATTR_PACKED zusb_desc_string {
   uint8_t bLength;              /* +0 */
   uint8_t bDescriptorType;      /* +1 */
-  uint_le16_t bString[];        /* +2 */
+  uint_le16_t bString[0];       /* +2 */
 } zusb_desc_string_t;
 
 /* USB Interface Descriptor (0x04) */
-typedef struct __attribute__((packed)) zusb_desc_interface {
+typedef struct ATTR_PACKED zusb_desc_interface {
   uint8_t bLength;              /* +0 */
   uint8_t bDescriptorType;      /* +1 */
   uint8_t bInterfaceNumber;     /* +2 */
@@ -212,7 +218,7 @@ typedef struct __attribute__((packed)) zusb_desc_interface {
 } zusb_desc_interface_t;
 
 /* USB Endpoint Descriptor (0x05) */
-typedef struct __attribute__((packed)) zusb_desc_endpoint {
+typedef struct ATTR_PACKED zusb_desc_endpoint {
   uint8_t bLength;              /* +0 */
   uint8_t bDescriptorType;      /* +1 */
   uint8_t bEndpointAddress;     /* +2 */
@@ -222,7 +228,7 @@ typedef struct __attribute__((packed)) zusb_desc_endpoint {
 } zusb_desc_endpoint_t;
 
 /* USB Interface Association Descriptor (0x0b) */
-typedef struct __attribute__((packed)) zusb_desc_interface_assoc_t {
+typedef struct ATTR_PACKED zusb_desc_interface_assoc_t {
   uint8_t bLength;              /* +0 */
   uint8_t bDescriptorType;      /* +1 */
   uint8_t bFirstInterface;      /* +2 */
@@ -234,7 +240,7 @@ typedef struct __attribute__((packed)) zusb_desc_interface_assoc_t {
 } zusb_desc_interface_assoc_t;
 
 #ifdef __cplusplus
- }
+}
 #endif
 
- #endif /* _ZUSB_TYPES_H_ */
+#endif /* _ZUSB_TYPES_H_ */

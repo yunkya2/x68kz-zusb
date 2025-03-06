@@ -32,7 +32,11 @@
 extern "C" {
 #endif
 
+#ifdef __GNUC__
 #define ATTR_PACKED   __attribute__ ((packed))
+#else
+#define ATTR_PACKED
+#endif
 
 #define SCSI_CMD_TEST_UNIT_READY                0x00
 #define SCSI_CMD_REZERO_UNIT                    0x01

@@ -35,8 +35,8 @@ extern "C" {
 
 /*--------------------------------------------------------------------------*/
 
-volatile struct zusb_regs *zusb __attribute__((common));
-uint8_t *zusbbuf __attribute__((common));
+volatile struct zusb_regs *zusb __attribute__ ((common));
+uint8_t *zusbbuf __attribute__ ((common));
 
 /*--------------------------------------------------------------------------*/
 
@@ -75,6 +75,8 @@ static inline int zusb_send_cmd(int cmd)
 
 static inline int zusb_get_descriptor(uint8_t *buf)
 {
+    int len;
+
     zusb_set_region(buf, 1);
     if (zusb_send_cmd(ZUSB_CMD_GETDESC) < 0) {
         return -1;
@@ -82,7 +84,7 @@ static inline int zusb_get_descriptor(uint8_t *buf)
     if (zusb->ccount == 0) {
         return 0;
     }
-    int len = buf[0];
+    len = buf[0];
     zusb_set_region(&zusbbuf[1], len - 1);
     if (zusb_send_cmd(ZUSB_CMD_GETDESC) < 0 ||
         zusb->ccount != len - 1) {
@@ -98,12 +100,14 @@ static inline void zusb_rewind_descriptor(void)
 
 static inline int zusb_send_control(int bmRequestType, int bRequest, int wValue, int wIndex, int wLength, void *data)
 {
+    int res;
+
     zusb->param = (bmRequestType<< 8) | bRequest;
     zusb->value = wValue;
     zusb->index = wIndex;
     zusb_set_region(data, wLength);
-    int res = zusb_send_cmd(ZUSB_CMD_CONTROL);
-    return (res == 0) ? zusb->ccount : res;
+    res = zusb_send_cmd(ZUSB_CMD_CONTROL);
+    return (res == 0) ? (int)zusb->ccount : res;
 }
 
 /*--------------------------------------------------------------------------*/
@@ -187,7 +191,7 @@ static inline int zusb_match_with_devclass(int devid, int type, uint8_t *desc, v
 {
     struct zusb_match_with_devclass_arg *a = (struct zusb_match_with_devclass_arg *)arg;
     zusb_desc_interface_t *dintf = (zusb_desc_interface_t *)desc;
-    if (type != ZUSB_DESC_INTERFACE || dintf->bLength != sizeof(zusb_desc_interface_t)) {
+    if (type != ZUSB_DESC_INTERFACE || dintf->bLength > sizeof(zusb_desc_interface_t)) {
         return 0;
     }
     if ((a->devclass < 0 || (dintf->bInterfaceClass == a->devclass)) &&
@@ -221,7 +225,7 @@ static inline int zusb_find_device(zusb_match_func *fn, void *arg, int pdev)
 
     while (zusb->devid != 0) {
         while (zusb_get_descriptor(zusbbuf) > 0) {
-            if (fn(zusb->devid, zusbbuf[1], zusbbuf, arg)) {
+            if (fn((int)zusb->devid, (int)zusbbuf[1], zusbbuf, arg)) {
                 int res = zusb->devid;
                 do {
                     if (zusb_send_cmd(ZUSB_CMD_NEXTDEV) < 0) {
@@ -242,18 +246,24 @@ static inline int zusb_find_device(zusb_match_func *fn, void *arg, int pdev)
 
 static inline int zusb_find_device_with_vid_pid(int vid, int pid, int pdev)
 {
-    struct zusb_match_with_vid_pid_arg arg = { vid, pid };
+    struct zusb_match_with_vid_pid_arg arg;
+    arg.vid = vid;
+    arg.pid = pid;
     return zusb_find_device(zusb_match_with_vid_pid, &arg, pdev);
 }
 
 static inline int zusb_find_device_with_devclass(int devclass, int subclass, int protocol, int pdev)
 {
-    struct zusb_match_with_devclass_arg arg = { devclass, subclass, protocol };
+    struct zusb_match_with_devclass_arg arg;
+    arg.devclass = devclass;
+    arg.subclass = subclass;
+    arg.protocol = protocol;
     return zusb_find_device(zusb_match_with_devclass, &arg, pdev);
 }
 
 static inline int zusb_get_string_descriptor(char *str, int len, int index)
 {
+    int i;
     uint8_t *buf = &zusbbuf[ZUSB_SZ_USBBUF - 256];
 
     zusb->param = (ZUSB_DIR_IN << 8) | ZUSB_REQ_GET_DESCRIPTOR;
@@ -264,7 +274,7 @@ static inline int zusb_get_string_descriptor(char *str, int len, int index)
         return -1;
     }
 
-    for (int i = 2; i < zusb->ccount; i += 2) {
+    for (i = 2; i < zusb->ccount; i += 2) {
         if (len <= 0) {
             break;
         }
@@ -287,18 +297,25 @@ typedef struct zusb_endpoint_config {
 } zusb_endpoint_config_t;
 
 static inline int zusb_connect_device(int devid,
-                                      int config, int devclass, int subclass, int protocol,
-                                      zusb_endpoint_config_t epcfg[])
+                        int config, int devclass, int subclass, int protocol,
+                        zusb_endpoint_config_t *epcfg)
 {
+    int i;
     int result = 0;
     int use_config = 0;
     int use_intf = 0;
+    uint8_t *desc;
+    zusb_desc_configuration_t *dconf;
+    zusb_desc_interface_t *dintf;
+    zusb_desc_endpoint_t *dendp;
+    uint16_t cfg;
+    uint16_t ncfg;
 
     zusb->devid = devid;
     while (zusb_get_descriptor(zusbbuf) > 0) {
-        uint8_t *desc = zusbbuf;
+        desc = zusbbuf;
         if (desc[1] == ZUSB_DESC_CONFIGURATION) {
-            zusb_desc_configuration_t *dconf = (zusb_desc_configuration_t *)desc;
+            dconf = (zusb_desc_configuration_t *)desc;
             use_config = (dconf->bConfigurationValue == config);
         }
         if (!use_config) {
@@ -307,7 +324,7 @@ static inline int zusb_connect_device(int devid,
 
         switch (desc[1]) {
         case ZUSB_DESC_INTERFACE:
-            zusb_desc_interface_t *dintf = (zusb_desc_interface_t *)desc;
+            dintf = (zusb_desc_interface_t *)desc;
             use_intf = ((devclass < 0 || (dintf->bInterfaceClass == devclass)) &&
                         (subclass < 0 || (dintf->bInterfaceSubClass == subclass)) &&
                         (protocol < 0 || (dintf->bInterfaceProtocol == protocol)));
@@ -324,10 +341,10 @@ static inline int zusb_connect_device(int devid,
             if (!use_intf) {
                 break;
             }
-            zusb_desc_endpoint_t *dendp = (zusb_desc_endpoint_t *)desc;
-            uint16_t cfg = (dendp->bEndpointAddress << 8) | dendp->bmAttributes;
-            for (int i = 0; i < ZUSB_N_EP; i++) {
-                uint16_t ncfg = zusb->pcfg[i];
+            dendp = (zusb_desc_endpoint_t *)desc;
+            cfg = (dendp->bEndpointAddress << 8) | dendp->bmAttributes;
+            for (i = 0; i < ZUSB_N_EP; i++) {
+                ncfg = zusb->pcfg[i];
                 if (epcfg[i].maxpacketsize == 0xffff) {
                     break;
                 }
@@ -355,6 +372,8 @@ static inline void zusb_disconnect_device(void)
 {
     zusb_send_cmd(ZUSB_CMD_DISCONNECT);
 }
+
+/*--------------------------------------------------------------------------*/
 
 #ifdef __cplusplus
 }
