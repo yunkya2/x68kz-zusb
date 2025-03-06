@@ -5,6 +5,7 @@
 *.fnc
 *.SYS
 *.bin
+*.xdf
 *.hds
 *.zip
 build/

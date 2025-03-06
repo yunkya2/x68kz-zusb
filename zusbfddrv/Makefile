@@ -89,8 +89,9 @@ zusbfddrv_boot2.o: zusbfddrv.c $(HEADERS)
 install: ../build
 	cp -p $(filter %.x,$(TARGETS)) ../build/bin
 	cp -p $(filter %.sys,$(TARGETS)) ../build/sys
-	cp -p $(filter %.hds,$(TARGETS)) ../build
+	cp -p $(filter %.hds,$(TARGETS)) ../build/zusbfdboot
 	cp -p README.md ../build/doc/zusbfddrv.md
+	cp -p README-zusbfdboot.md ../build/zusbfdboot/README.md
 
 clean:
 	-rm -f $(TARGETS) *.o *.sys *.elf *.x *.bin

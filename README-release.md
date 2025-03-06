@@ -33,13 +33,20 @@ HACKER'S EDITION 上で ZUSB 対応を有効にしたエミュレータを使用
   * zusbmodrv.sys -- USB MO ドライバ
   * zusbscsi.sys -- USB SCSI IOCS ドライバ
 * doc/ -- ツールやデバイスドライバのドキュメント
+  * zusbtools.txt
+  * zusbether.txt
+  * zusbfddrv.txt
+  * zusbscsi.txt
+  * zusbvideo.txt
 * sdk/ -- ZUSB 対応アプリケーション開発用ファイル & サンプル
-
-以下は FDD/HDD イメージファイルです
-
-* zusb-GIT_REPO_VERSION.xdf -- 上記ファイルが入った FDD イメージファイル
-* zusbfdboot1.hds -- USB FDD フェイクブート HDD イメージ (1ドライブ用)
-* zusbfdboot2.hds -- USB FDD フェイクブート HDD イメージ (2ドライブ用)
+  * doc/ -- ZUSB 仕様ドキュメント
+    * ZUSB-api.txt -- ZUSB API 仕様
+    * ZUSB-specs.txt -- ZUSB レジスタ仕様
+  * cross/ -- クロス開発環境 [elf2x68k](https://github.com/yunkya2/elf2x68k) 用ヘッダファイル & サンプル
+    * include/
+  * xc/ -- XC 用ヘッダファイル、ライブラリ & サンプル
+    * include/
+    * lib/
 
 
 ## 対応デバイス

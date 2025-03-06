@@ -57,6 +57,7 @@ X68000 Z の USB ポートにデバイスを接続する場合、以下のよう
   * zusbjoyc - X68000 Z JOYCARD のテスト
 * [zusbvideo - USB Video デバイステストアプリ](zusbvideo/README.md)
 * [zusbfddrv - USB FDD ドライバ](zusbfddrv/README.md)
+  * [USB FDD フェイクブート用ディスクイメージ](zusbfddrv/README-zusbfdboot.md)
 * [zusbscsi - USB SCSI IOCS ドライバ](zusbscsi/README.md)
 * [zusbether - USB LAN アダプタドライバ](zusbether/README.md)
 
