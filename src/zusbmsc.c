@@ -87,11 +87,11 @@ int main(int argc, char **argv)
                 printf(" Device:%3d ", devid);
                 printf("ID:0x%04x-0x%04x", zusb_le16toh(ddev->idVendor), zusb_le16toh(ddev->idProduct));
                 if (ddev->iManufacturer &&
-                    zusb_get_string_descriptor(str, sizeof(str), ddev->iManufacturer)) {
+                    zusb_get_string_descriptor(str, sizeof(str), ddev->iManufacturer) > 0) {
                     printf(" %s", str);
                 }
                 if (ddev->iProduct &&
-                    zusb_get_string_descriptor(str, sizeof(str), ddev->iProduct)) {
+                    zusb_get_string_descriptor(str, sizeof(str), ddev->iProduct) > 0) {
                     printf(" %s", str);
                 }
                 printf("\n");

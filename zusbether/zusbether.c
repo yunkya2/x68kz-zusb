@@ -691,6 +691,7 @@ static int etherinit(void)
   _dos_print("USB LANアダプタ(");
   if (regp->iProduct) {
     char product[256];
+    product[0] = '\0';
     zusb_get_string_descriptor(product, sizeof(product), regp->iProduct);
     _dos_print(product);
     _dos_putchar(' ');
