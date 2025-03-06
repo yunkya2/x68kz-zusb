@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-#ifndef _ZUSBMACRO_H_
-#define _ZUSBMACRO_H_
+#ifndef _ZUSBFUNC_H_
+#define _ZUSBFUNC_H_
 
 #include <stdint.h>
 #include "zusbregs.h"
@@ -379,4 +379,4 @@ static inline void zusb_disconnect_device(void)
 }
 #endif
 
-#endif /* _ZUSBMACRO_H_ */
+#endif /* _ZUSBFUNC_H_ */

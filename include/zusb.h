@@ -27,6 +27,6 @@
 
 #include "zusbregs.h"
 #include "zusbtypes.h"
-#include "zusbmacro.h"
+#include "zusbfunc.h"
 
 #endif /* _ZUSB_H_ */

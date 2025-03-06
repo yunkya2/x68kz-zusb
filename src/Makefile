@@ -35,7 +35,7 @@ ASFLAGS = -m68000 -I.
 
 TARGETS = zusb.x zusbhid.x zusbmsc.x zusbaudio.x zusbjoyc.x zusbcdplay.x
 OBJS = $(TARGETS:.x=.o)
-HEADERS = zusbmacro.h zusbtypes.h zusbregs.h
+HEADERS = zusbfunc.h zusbtypes.h zusbregs.h
 LDFLAGS = -s
 LIBS =
 
