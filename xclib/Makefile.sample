@@ -21,33 +21,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-SRCDIR = libzusb
+CC = cc
 INCDIR = include
-LIBDIR = lib
-SAMPLEDIR = sample
-INSTDIR = ../build/sdk/xc
+LIBS = lib/libzusb.l
+CFLAGS = /I$(INCDIR) /Fc
 
-convert = sed 's/$$/\r/' $(1) | grep -v stdint | sed 's/__attribute__ ((.*))//' | iconv -f utf-8 -t cp932 > $(2)
+all: zusbhid.x
 
-all:
+zusbhid.x: zusbhid.o
+	$(CC) /Y $^ $(LIBS)
 
-install: src ../build
-	-mkdir -p $(INSTDIR)
-	cp -pr $(INCDIR) $(LIBDIR) $(INSTDIR)
-	$(call convert,Makefile.sample,$(INSTDIR)/Makefile)
-	$(call convert,zusbhid.c,$(INSTDIR)/zusbhid.c)
-	$(MAKE) clean
-
-src: $(SRCDIR) $(INCDIR) $(LIBDIR) $(SAMPLEDIR)
-	./makefunc.py ../include/zusbfunc.h $(SRCDIR) $(INCDIR)/zusbfunc.h
-	$(call convert,zusb.h,$(INCDIR)/zusb.h)
-	$(call convert,../include/zusbtypes.h,$(INCDIR)/zusbtypes.h)
-	$(call convert,../include/zusbregs.h,$(INCDIR)/zusbregs.h)
-	$(call convert,zusb_var.c,$(SRCDIR)/zusb_var.c)
-	$(call convert,Makefile.lib,$(SRCDIR)/Makefile)
-
-$(SRCDIR) $(INCDIR) $(LIBDIR) $(SAMPLEDIR):
-	mkdir $@
+zusbhid.o: zusbhid.c
+	$(CC) $(CFLAGS) $<
 
 clean:
-	rm -rf $(SRCDIR) $(INCDIR) $(SAMPLEDIR)
+	del /y *.o
+	del zusbhid.x
