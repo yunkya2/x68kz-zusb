@@ -1,0 +1,42 @@
+INCDIR = ../include
+
+#CC = cc
+#CFLAGS = /I$(INCDIR) /Fc /O
+CC = gcc
+CFLAGS = -I$(INCDIR) -c -O
+
+SRC = \
+zusb_var.c \
+zusb00.c \
+zusb00.o \
+zusb01.c \
+zusb02.c \
+zusb03.c \
+zusb04.c \
+zusb05.c \
+zusb06.c \
+zusb07.c \
+zusb08.c \
+zusb09.c \
+zusb10.c \
+zusb11.c \
+zusb12.c \
+zusb13.c \
+zusb14.c \
+zusb15.c \
+zusb16.c \
+zusb17.c \
+zusb18.c \
+zusb19.c
+
+all: ../lib/libzusb.l
+
+../lib/libzusb.l: $(SRC:.c=.o)
+	lib $@ $^
+
+%.o: %.c
+	$(CC) $(CFLAGS) $<
+
+clean:
+	del /y *.o
+	del /y *.l

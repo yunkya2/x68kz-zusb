@@ -21,29 +21,30 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-SUBDIRS = src zusbvideo zusbether zusbfddrv zusbscsi xclib
+SRCDIR = libzusb
+INCDIR = include
+LIBDIR = lib
+INSTDIR = ../build/sdk/xc
 
-GIT_REPO_VERSION=$(shell git describe --tags --always)
+convert = sed 's/$$/\r/' $(1) | grep -v stdint | sed 's/__attribute__ ((.*))//' | iconv -f utf-8 -t cp932 > $(2)
 
 all:
-	-for d in $(SUBDIRS); do $(MAKE) -C $$d all; done
 
-install: all
-	rm -rf build
-	mkdir build && (cd build && mkdir doc bin sys)
-	cp README-release.md build/README.md
-	-for d in $(SUBDIRS); do $(MAKE) -C $$d install; done
-	mkdir -p build/sdk && (cd build/sdk && mkdir doc include)
-	cp -p include/*.h build/sdk/include
-	cp -p ZUSB-api.md ZUSB-specs.md build/sdk/doc
-	./md2txtconv.py -r build/*.md build/doc/*.md build/sdk/doc/*.md GIT_REPO_VERSION=$(GIT_REPO_VERSION)
-	(cd build && xdftool.py c zusb-$(GIT_REPO_VERSION).xdf README.txt bin sys sdk doc)
+install: src ../build
+	-mkdir -p $(INSTDIR)
+	cp -pr $(INCDIR) $(LIBDIR) $(INSTDIR)
+	$(MAKE) clean
 
-release: install
-	(cd build && zip -r ../zusb-$(GIT_REPO_VERSION).zip *)
+src: $(SRCDIR) $(INCDIR) $(LIBDIR)
+	./makefunc.py ../include/zusbfunc.h $(SRCDIR) $(INCDIR)/zusbfunc.h
+	$(call convert,zusb.h,$(INCDIR)/zusb.h)
+	$(call convert,../include/zusbtypes.h,$(INCDIR)/zusbtypes.h)
+	$(call convert,../include/zusbregs.h,$(INCDIR)/zusbregs.h)
+	$(call convert,zusb_var.c,$(SRCDIR)/zusb_var.c)
+	$(call convert,Makefile.lib,$(SRCDIR)/Makefile)
+
+$(SRCDIR) $(INCDIR) $(LIBDIR):
+	mkdir $@
 
 clean:
-	-rm -rf build
-	-for d in $(SUBDIRS); do $(MAKE) -C $$d clean; done
-
-.PHONY: all clean install
+	rm -rf $(SRCDIR) $(INCDIR)
