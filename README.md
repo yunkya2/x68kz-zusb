@@ -45,6 +45,7 @@ X68000 Z の USB ポートにデバイスを接続する場合、以下のよう
 
 * [ZUSB レジスタ仕様](ZUSB-specs.md)
 * [ZUSB API 仕様](ZUSB-api.md)
+* [X-BASIC 外部関数仕様](basic/README.md)
 
 ## 関連ツール
 

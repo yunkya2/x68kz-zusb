@@ -50,7 +50,9 @@ zusb.fnc: head.o zusbfnc.o
 
 install: all ../build
 	-mkdir -p ../build/sdk/basic
+	-mkdir -p ../build/sdk/doc
 	cp -p zusb.fnc ../build/sdk/basic
+	cp -p README.md ../build/sdk/doc/ZUSB-basic.md
 
 clean:
 	-rm -f *.o *.sys *.elf* *.x *.fnc
