@@ -21,33 +21,38 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-SUBDIRS = src zusbvideo zusbether zusbfddrv zusbscsi xclib basic
+CROSS = m68k-xelf-
+CC = $(CROSS)gcc
+AS = $(CROSS)gcc
+LD = $(CROSS)gcc
+OBJCOPY = $(CROSS)objcopy
 
 GIT_REPO_VERSION=$(shell git describe --tags --always)
 
-all:
-	-for d in $(SUBDIRS); do $(MAKE) -C $$d all; done
+CFLAGS = -g -m68000 -I. -Os -DGIT_REPO_VERSION=\"$(GIT_REPO_VERSION)\"
+CFLAGS += -I../include
+ASFLAGS = -m68000 -I.
 
-install: all
-	rm -rf build
-	mkdir build && (cd build && mkdir doc bin sys zusbfdboot)
-	cp README-release.md build/README.md
-	-for d in $(SUBDIRS); do $(MAKE) -C $$d install; done
-	mkdir -p build/sdk && (cd build/sdk && mkdir -p doc cross xc)
-	cp -pr include build/sdk/cross
-	cp -p src/zusbhid.c build/sdk/cross
-	cp -p src/Makefile.sample build/sdk/cross/Makefile
-	cp -p ZUSB-api.md ZUSB-specs.md build/sdk/doc
-	./md2txtconv.py -r build/*.md build/doc/*.md build/sdk/doc/*.md build/zusbfdboot/*.md GIT_REPO_VERSION=$(GIT_REPO_VERSION)
-	(cd build && xdftool.py c zusb-$(GIT_REPO_VERSION).xdf README.txt bin sys sdk doc)
+ifneq ($(DEBUG),)
+CFLAGS += -DDEBUG
+endif
 
-release: install
-	(cd build && zip -r ../zusb-$(GIT_REPO_VERSION).zip README.txt bin sys sdk doc)
-	(cd build/zusbfdboot && zip -r ../../zusbfdboot-$(GIT_REPO_VERSION).zip .)
-	cp build/zusb-$(GIT_REPO_VERSION).xdf .
+all: zusb.fnc
+
+zusb.fnc: head.o zusbfnc.o
+	$(LD) -o $@ $^ -nostartfiles -s
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $<
+
+%.o: %.S
+	$(AS) $(ASFLAGS) -c $<
+
+install: all ../build
+	-mkdir -p ../build/sdk/basic
+	cp -p zusb.fnc ../build/sdk/basic
 
 clean:
-	-rm -rf build
-	-for d in $(SUBDIRS); do $(MAKE) -C $$d clean; done
+	-rm -f *.o *.sys *.elf* *.x *.fnc
 
 .PHONY: all clean install
