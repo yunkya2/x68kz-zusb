@@ -37,6 +37,8 @@ ifneq ($(DEBUG),)
 CFLAGS += -DDEBUG
 endif
 
+convert = sed 's/$$/\r/' $(1) | iconv -f utf-8 -t cp932 > $(2) ; echo -n '\032' >> $(2)
+
 all: zusb.fnc
 
 zusb.fnc: head.o zusbfnc.o
@@ -52,6 +54,7 @@ install: all ../build
 	-mkdir -p ../build/sdk/basic
 	-mkdir -p ../build/sdk/doc
 	cp -p zusb.fnc ../build/sdk/basic
+	for f in *.bas; do $(call convert,$$f,../build/sdk/basic/$$f); done
 	cp -p README.md ../build/sdk/doc/ZUSB-basic.md
 
 clean:
