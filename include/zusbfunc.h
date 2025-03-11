@@ -62,6 +62,9 @@ static inline void zusb_set_ep_region_isoc(int epno, void *buf, struct zusb_isoc
 static inline int zusb_send_cmd(int cmd)
 {
     zusb->cmd = cmd;
+#ifdef __GNUC__
+    __asm__ volatile ("" : : : "memory");
+#endif
     while (zusb->stat & ZUSB_STAT_BUSY) {
         if (zusb->stat & ZUSB_STAT_ERROR) {
             return -1;
