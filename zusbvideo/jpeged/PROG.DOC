@@ -1,0 +1,96 @@
+
+   プログラムメモ
+
+JPEG.S            メインプログラム
+  CheckParam00      パラメータチェック
+  CutFname          ファイル名のカット
+  RangeRead         範囲の読込み
+  NUMCUT            数字の読込み
+  SJIS              シフトＪＩＳのチェック
+
+ERROR.S		ｴﾗｰﾒｯｾｰｼﾞ表示と終了
+
+SCROLL.S          画像のスクロール
+  Scroll            画像のスクロール
+
+ENCODE.S          ハフマン符号化
+  ENCODE            ハフマン符号化
+  PutAC             ＡＣ成分の出力
+  PutC              符号出力
+  PutB              １バイト出力
+  preENCODE         ハフマン符号化前処理
+  postENCODE        ハフマン符号化後処理
+
+VTOYUV.S          VRAM データを YUVデータに変換
+  VRAM_to_YUV
+
+DECODE.S          ハフマン復号化
+  DECODE_DC         ハフマン復号化（ＤＣ成分）
+  DECODE_AC         ハフマン復号化（ＡＣ成分）
+  GetC              １バイト入力
+  getbuf            バッファ入力
+  Check_Restart     リスタートマーカの処理
+  preDECODE         ハフマン復号化前処理
+
+PUTBLOCK.S        ブロック出力
+  PutBlock          ブロック出力
+  Quantamize        量子化
+
+
+LOAD.S            データのロード
+  Load              データのロード
+  PrintW            ワードデータの表示
+  Square            正方形のピクセルにする
+  end_key_chk	　　終了キーのチェック
+  inkey		    キーボード＆マウスから入力
+  close_temp	　　ﾃﾝﾎﾟﾗﾘﾌｧｲﾙを閉じて削除
+  Get_vector	    ｷｰ割り込みﾍﾞｸﾀのﾌｯｸ
+  Restore_vector    ｷｰ割り込みﾍﾞｸﾀの解放
+  int4c		    ｷｰ割り込みの処理
+  abort_process	    強制終了の処理
+
+GETBLOCK.S        ブロック入力
+  GetBlock          ブロック入力
+  GetPart           部分入力（間引き＆引き延ばし表示ﾙｰﾁﾝ）
+  DecodeUV          色差信号の複合化
+
+YUV.S             YUVデータのVRAMデータへの変換
+  YUV_to_RGB	    色差成分
+  YUV_to_RGB2	　　色差成分１／２
+  YUV_to_RGB4	    色差成分１／４
+*
+SAVE.S            ファイルのセーブ
+  Save              ファイルのセーブ
+  Put_Comment       コメントの出力
+  Put_Header        ヘッダーの出力
+  ReadQtable        量子化テーブルの読込
+  SetQtable         量子化テーブルの設定
+
+GETHEAD.S         ヘッダー部の読み取り
+  getw              ワードデータの読み取り
+  Get_Header        ヘッダー部の読み取り
+
+SETDATA.S         データ領域
+*
+DCT.S   離散コサイン変換
+  DCT   離散コサイン変換
+
+IDCT.S  離散コサイン逆変換（ＵＶ成分）
+  IDCT  離散コサイン逆変換
+
+IDCT_Y.S  離散コサイン逆変換（Ｙ成分）
+  IDCT_Y  離散コサイン逆変換
+
+mk_mul_tbl.s	乗算テーブル作成
+　make_RGB_table     RGB各12bitの値からVRAM形式のﾃﾞｰﾀに変換するﾃｰﾌﾞﾙ
+  make_IDCT_table    IDCTの12bit*12bit=12bit乗算用ﾃｰﾌﾞﾙ作成
+  make_DCT_table     DCTの32bit*12bit=32bit乗算用ﾃｰﾌﾞﾙ作成
+  make_YUV_RGB_table YUV_to_RGBでの乗算ﾃｰﾌﾞﾙ作成
+  make_RGB_YUV_table RGB_to_YUVでの乗算ﾃｰﾌﾞﾙ作成
+  make_mul_tbl_sub   乗算ﾃｰﾌﾞﾙ作成ｻﾌﾞﾙｰﾁﾝ
+  make_UQ_table	     逆量子化乗算ﾃｰﾌﾞﾙ作成
+  make_interval_work 間引き＆引き延ばし表示時のX方向展開ﾙｰﾁﾝの作成
+
+MES.S		ﾒｯｾｰｼﾞとﾃﾞｰﾀ
+Huffman.s	ﾊﾌﾏﾝ符号処理関係
+

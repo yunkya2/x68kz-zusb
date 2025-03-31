@@ -1,0 +1,27 @@
+*
+*       JEPG.MAC
+*
+*
+pushw   macro reg
+  move.w  reg,-(sp)
+  endm
+*
+popw   macro reg
+  move.w  (sp)+,reg
+  endm
+*
+*
+pushl   macro reg
+  move.l  reg,-(sp)
+  endm
+*
+popl   macro reg
+  move.l  (sp)+,reg
+  endm
+*
+*
+*
+*
+  globl   SetQtable
+*
+
