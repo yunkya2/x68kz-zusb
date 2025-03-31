@@ -5,10 +5,19 @@
 CROSS = m68k-xelf-
 HAS = run68 HAS.X
 HASFLAGS = -w1
+CC = $(CROSS)gcc
+AS = $(CROSS)gcc
 LD = $(CROSS)gcc
-LDFLAGS = -nostdlib -e start
+
+GIT_REPO_VERSION=$(shell git describe --tags --always)
+
+CFLAGS = -g -m68000 -I. -Os -DGIT_REPO_VERSION=\"$(GIT_REPO_VERSION)\"
+ASFLAGS = -m68000 -I.
+LDFLAGS =
 
 TARGET = jpegedx.x
+
+OBJS += main.o
 
 OBJS += jpeg.o
 OBJS += error.o
@@ -36,6 +45,9 @@ all: $(TARGET)
 # リンクはELF形式で行う
 $(TARGET): $(OBJS)
 	$(LD) $(LDFLAGS) -o $@ $^
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 # アセンブルはrun68を使ってHAS.Xで実行し、できた*.oをELF形式に変換する
 %.o: %.s

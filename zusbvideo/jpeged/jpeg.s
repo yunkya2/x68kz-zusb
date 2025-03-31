@@ -18,7 +18,90 @@ include   work.inc
   .text
   .cpu 68000
 *
-start::
+
+*	jpegload(char *buffer, size_t bufsize, char *fname);
+
+jpegload::
+		movem.l	d1-d7/a0-a6,-(sp)
+		move.l	(4*15)(sp),d0		* buffer
+		move.l	(4*15+4)(sp),d1		* bufsize
+
+		move.l	d0,a6
+		lea.l	work_adrs(pc),a5
+		move.l	d0,(a5)+		* work start address set
+		add.l	#COS_TBL+2048*2*6+COS1,d0
+		sub.l	#COS_TBL+2048*2*6+COS1,d1
+		move.l	d0,(a5)+		* COS_TBLｱﾄﾞﾚｽ
+		lea.l	em_free_adrs(a6),a5	* common work address
+
+		move.l	a5,free_adrs(a6)
+		move.l	d1,free_size(a6)
+
+*ワーク初期化
+*----------------------------------
+		movea.l	a6,a5
+		move.l	#clr_end,d5
+		bsr	clear_area
+
+		move.b  #3,uvmode(a6)
+		move.l	#$00010001,Interval(a6)
+		move.l	#$00010001,Interval+4(a6)
+		move.w	#1,Qlevel(a6)
+		lea.l	DQT+4(pc),a5
+		move.l	a5,DQTadr(a6)
+		move.l	#$c00000,VSadr(a6)
+		move.w	#512,VSXsize(a6)
+		move.w	#512,VSYsize(a6)
+		move.w	#16,VScbit(a6)
+
+		move.w	#-1,imsg_handle(a6)
+
+		moveq.l	#1,d0
+.cpu 68030
+		move.b	(mpu_table-1,pc,d0.w*2),d0	MPU判定
+.cpu 68000
+		move.b	d0,Sys_flag2(a6)
+		bra	@f
+mpu_table:	.dc.b	$04,$05
+@@
+		bset.b	#5,Sys_flag3(a6)
+
+* -H
+*		move.b	#2,Action(a6)
+
+* -F1 を指定
+		moveq.l	#1,d1
+		move.b	d1,DispMod(a6)
+		bclr.b	#2,Sys_flag2(a6)
+
+* fname を指定
+		lea	fname(a6),a0
+		move.l	(4*15+8)(sp),a1		* fname
+@@		move.b	(a1)+,(a0)+
+		bne	@b
+
+		*位置指定で、右下の座標指定が無い場合は、右下の座標を初期化
+		*------------------------------------
+
+*		btst.b	#6,Sys_flag2(a6)
+*		bne	main_pos_end
+
+		move.w	VSXsize(a6),d0
+		move.w	VSYsize(a6),d1
+		subq.w	#1,d0
+		subq.w	#1,d1
+		move.w	d0,HE(a6)
+		move.w	d1,VE(a6)
+*main_pos_end
+
+		bsr	Load
+
+		movem.l	(sp)+,d1-d7/a0-a6
+		rts
+
+	.if 0
+
+start:
 *メモリ確保
 *--------------------------------------------
 	*ﾌﾟﾛｸﾞﾗﾑ+ｽﾀｯｸ分のﾒﾓﾘを残して後は解放
@@ -36,15 +119,15 @@ start::
 		add.l	a5,d1
 		lea.l	start(pc),a5
 		sub.l	a5,d1
-		sub.l	#16,d1
+		sub.l	#16,d1			* running_size末尾+4096までのサイズ
 	.endif
 
-		move.l	8(a0),d0
-		sub.l	a0,d0
+		move.l	8(a0),d0		* このメモリブロックの終了アドレス+1
+		sub.l	a0,d0			* このメモリブロックのサイズ
 		cmp.l	d0,d1
 		bhi	Memory_error		ﾒﾓﾘが足りない
 
-		lea.l	(a0,d1.l),sp
+		lea.l	(a0,d1.l),sp		* spをブロック末尾に設定
 
 		move.l	d1,-(sp)
 		pea.l	16(a0)
@@ -658,6 +741,7 @@ chk_hex_upper
   sub.b   #'A'-10,d0
   bra     No_Carry_rts
 
+	.endif
 
 ******************************************************************************
 *
@@ -687,6 +771,8 @@ clear_area
 2:
 	dbra	d5,1b
 	rts
+
+	.if	0
 *
 *
 *
@@ -725,6 +811,7 @@ Option_tbl
 		.dc.w	'w',Option_W-CheckParam20
 		.dc.w	'2',Option_2-CheckParam20
 		.dc.w	0
+	.endif
 
-  .end	start
+*  .end	start
 
