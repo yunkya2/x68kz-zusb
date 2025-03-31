@@ -18,7 +18,7 @@ include   work.inc
   .text
   .cpu 68000
 *
-start
+start::
 *メモリ確保
 *--------------------------------------------
 	*ﾌﾟﾛｸﾞﾗﾑ+ｽﾀｯｸ分のﾒﾓﾘを残して後は解放
@@ -26,7 +26,18 @@ start
 		lea.l	start(pc),a1
 		sub.l	a0,a1
 		move.l	a1,d1
+	.if	0
 		add.l	#4096+running_size-start-16,d1
+	.else
+		*	外部参照シンボルを用いたアドレス演算ができないので
+		*	実行時に計算する
+		add.l	#4096,d1
+		lea.l	running_size(pc),a5
+		add.l	a5,d1
+		lea.l	start(pc),a5
+		sub.l	a5,d1
+		sub.l	#16,d1
+	.endif
 
 		move.l	8(a0),d0
 		sub.l	a0,d0
@@ -139,8 +150,8 @@ main_pos_end
 
 *各処理へ分岐
 *--------------------------------------
-		cmp.b	#1,Action(a6)
-		beq	Save
+*		cmp.b	#1,Action(a6)
+*		beq	Save
 		*cmp.w	#24,VScbit(a6)
 		*beq	no_sup_24_error
 		bra	Load
