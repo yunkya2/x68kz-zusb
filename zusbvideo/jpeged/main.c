@@ -25,10 +25,20 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <setjmp.h>
+#include <x68k/dos.h>
+#include <x68k/iocs.h>
 
-int jpegload(char *buffer, size_t bufsize, char *fname);
+int jpegload(uint8_t *buffer, size_t bufsize, uint8_t *filebuf, size_t filesize, void (*abortfnc)(void));
 
 #define BUFSIZE     (1024 * 1024)
+
+jmp_buf jenv;
+
+void jpegabort(void)
+{
+    longjmp(jenv, 1);
+}
 
 int main(int argc, char **argv)
 {
@@ -42,6 +52,16 @@ int main(int argc, char **argv)
         fprintf(stderr, "Failed to open file: %s\n", argv[1]);
         return 1;
     }
+    fseek(fp, 0, SEEK_END);
+    size_t filesize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+    char *filebuf = malloc(filesize);
+    if (filebuf == NULL) {
+        fprintf(stderr, "Failed to allocate memory\n");
+        fclose(fp);
+        return 1;
+    }
+    fread(filebuf, 1, filesize, fp);
     fclose(fp);
 
     char *buffer = malloc(BUFSIZE);
@@ -50,7 +70,27 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    jpegload(buffer, BUFSIZE, argv[1]);
+    _iocs_crtmod(12);
+    _iocs_g_clr_on();
+
+    void *oldvec_buserr = _iocs_b_intvcs(0x02, jpegabort);
+    void *oldvec_adrerr = _iocs_b_intvcs(0x03, jpegabort);
+    void *oldvec_ilinst = _iocs_b_intvcs(0x04, jpegabort);
+    uint32_t usp = _iocs_b_super(0);
+
+    if (setjmp(jenv) == 0) {
+        jpegload(buffer, BUFSIZE, filebuf, filesize, jpegabort);
+    } else {
+        printf("error exit\n");
+    }
+
+    _iocs_b_super(usp);
+    _iocs_b_intvcs(0x02, oldvec_buserr);
+    _iocs_b_intvcs(0x03, oldvec_adrerr);
+    _iocs_b_intvcs(0x04, oldvec_ilinst);
+
+    free(filebuf);
+    free(buffer);
 
     return 0;
 }

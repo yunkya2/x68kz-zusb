@@ -127,23 +127,31 @@ Qtable_not_found
 
 _file_not_found
 
+	.if	0
 		DOS	_PRINT
+	.endif
 
 *Ì§²Ù‚ªŒ©‚Â‚©‚ç‚È‚¢
 *----------------------
 File_not_found
 
+	.if	0
 		pea.l	file_msg(pc)
 		DOS	_PRINT
 		addq.l	#4,sp
 		DOS	_PRINT
 		addq.l	#4,sp
 		pea.l	not_found_msg(pc)
+	.endif
 
 Disp_error_end
+	.if	0
 		DOS	_PRINT
 		pea.l	msgCR(pc)
 		DOS	_PRINT
+	.endif
+
+	.if	0
 
 		bsr	Restore_vector
 
@@ -152,6 +160,14 @@ Disp_error_end
 
 		move.w	#9,(sp)
 		dos	_EXIT2
+
+	.else
+
+		.xref	jpeg_abort_addr
+		movea.l	jpeg_abort_addr,a0
+		jmp	(a0)
+
+	.endif
 
 	.end
 

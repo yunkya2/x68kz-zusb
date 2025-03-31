@@ -39,6 +39,9 @@ Get_Header
 	move.w	(a1)+,d1
 	subq.w	#2,d1
 	bsr	getdht10
+
+    .if		0
+
 *
 *とりあえず与えられたﾌｧｲﾙ名で開いてみる
 *-------------------------------
@@ -79,6 +82,8 @@ OPEN_JPEG_END
 	DOS	_FILEDATE
 	addq.l	#6,sp
 	move.l	d0,fdate(a6)
+
+    .endif
 
 	move.l	free_adrs(a6),a5
 	move.l	free_size(a6),d5
@@ -529,6 +534,7 @@ getc
 
 *バッファに読み込む
 *-------------------------
+	.if	0
 	*読み込む所までＳＥＥＫ
 	*------------------------
 		move.w	#0,-(sp)
@@ -548,6 +554,35 @@ getc
 		tst.l	d0
 		bmi	Read_error
 		clr.l	d0
+	.else
+		.xref	jpeg_file_buf
+		.xref	jpeg_file_ofst
+		.xref	jpeg_file_size
+
+		move.l	file_point(a6),d0
+		cmp.l	jpeg_file_size,d0
+		bcc	Read_error
+
+		movem.l d1/a0-a1,-(sp)
+		move.l	jpeg_file_buf,a1
+		move.l	file_point(a6),d1
+		adda.l	d1,a1
+		movea.l a5,a0
+
+		move.w	#1024-1,d0
+@@:		move.b	(a1)+,(a0)+
+		dbra	d0,@b
+
+		add.l	#1024,d1
+		cmp.l	jpeg_file_size,d1
+		bcs	@f
+		move.l	jpeg_file_size,d1
+@@:		move.l	d1,jpeg_file_ofst
+
+		movem.l (sp)+,d1/a0-a1
+		clr.l 	d0
+	.endif
+
 
 *バッファから１バイト読み込む
 *-------------------------

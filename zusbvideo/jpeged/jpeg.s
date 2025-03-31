@@ -19,12 +19,14 @@ include   work.inc
   .cpu 68000
 *
 
-*	jpegload(char *buffer, size_t bufsize, char *fname);
+*	int jpegload(uint8_t *buffer, size_t bufsize, uint8_t *filebuf, size_t filesize, void (*abortfnc)(void));
 
 jpegload::
 		movem.l	d1-d7/a0-a6,-(sp)
 		move.l	(4*15)(sp),d0		* buffer
 		move.l	(4*15+4)(sp),d1		* bufsize
+
+		move.l	(4*15+16)(sp),jpeg_abort_addr	*abortfnc
 
 		move.l	d0,a6
 		lea.l	work_adrs(pc),a5
@@ -74,11 +76,17 @@ mpu_table:	.dc.b	$04,$05
 		move.b	d1,DispMod(a6)
 		bclr.b	#2,Sys_flag2(a6)
 
-* fname を指定
-		lea	fname(a6),a0
-		move.l	(4*15+8)(sp),a1		* fname
-@@		move.b	(a1)+,(a0)+
-		bne	@b
+
+		lea	jpeg_file_buf,a0
+		movea.l	(4*15+8)(sp),a1		* filebuf
+		move.l	a1,(a0)+
+		moveq.l	#0,d0
+		move.l	d0,(a0)+
+		movea.l	(4*15+12)(sp),a1	* filesize
+		move.l	a1,(a0)+
+
+* -N を指定
+		bset.b	#1,Sys_flag2(a6)
 
 		*位置指定で、右下の座標指定が無い場合は、右下の座標を初期化
 		*------------------------------------
@@ -97,7 +105,17 @@ mpu_table:	.dc.b	$04,$05
 		bsr	Load
 
 		movem.l	(sp)+,d1-d7/a0-a6
+		moveq.l	#0,d0
 		rts
+
+	.data
+
+jpeg_file_buf::		.dc.l	0
+jpeg_file_ofst::	.dc.l	0
+jpeg_file_size::	.dc.l	0
+jpeg_abort_addr::	.dc.l	0
+
+	.text
 
 	.if 0
 

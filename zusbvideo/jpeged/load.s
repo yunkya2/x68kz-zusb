@@ -431,13 +431,27 @@ load_get_VSF_buf_end
 *--------------------------------
 	bsr	getmem_file_buf
 
+	.if 0
 *スーパバイザーモードへ以降
 *--------------------------------
 	clr.l	-(sp)
 	dos	_SUPER
 	move.l	d0,(sp)
+	.endif
 
+	.if 0
 	bsr	Get_vector
+	.else
+	*Key_workを初期化
+	*--------------------------------
+		lea.l	Key_work(a6),a0
+		move.l	#$ffff0000,d0
+		move.w	#128+2-1,d1
+@@
+		move.l	d0,(a0)+
+		move.w	d0,(a0)+
+		dbra	d1,@b
+	.endif
 
 *スクリーンモード設定
 *--------------------------------
@@ -494,6 +508,7 @@ load80
 	bne	load82		正方形ではない
 	bsr	Square
 load82
+	.if 0
 	*マウスの初期化
 	*---------------------------
 	iocs	_MS_INIT
@@ -512,6 +527,7 @@ load82
 	move.w	#18,-(sp)
 	dos	_CONCTRL
 	addq.w	#2,sp
+	.endif
 
 *展開表示
 *---------------------------
@@ -676,6 +692,7 @@ load_end
 	bsr	inkey_undo
 	bra	@b
 @@
+	.if 0
 	*マウス初期化
 	*-------------------------------
 	btst.b	#5,Sys_flag2(a6)
@@ -701,6 +718,7 @@ load_end_VS
 	addq.l	#2,sp
 	dos	_SUPER
 	addq.w	#4,sp
+	.endif
 
 load_exit
 
@@ -1212,6 +1230,8 @@ chk_key_fast
 		lsl.w	#2,d0
 4:
 		rts
+
+		.if	0
 ******************************************************************************
 *
 *   ベクタ取得
@@ -1431,6 +1451,8 @@ mouse_int_right_end
 		movem.l	(sp)+,d0/a0/a6
 		move.l	mouse_sub_bak(pc),a0
 		jmp	(a0)
+
+		.endif
 
 ******************************************************************************
 *

@@ -370,7 +370,8 @@ GetBufSearchFF
 *		a5	ì«Ç›çûÇ›äJén±ƒﬁ⁄Ω
 *	îjâÛ	d0.l
 **************
-GetBufAllSub
+GetBufAllSub:
+    .if		0
 	move.l	buf_size(a6),-(sp)
 	movea.l	buf_adrs(a6),a5
 	move.l	a5,-(sp)
@@ -380,6 +381,43 @@ GetBufAllSub
 	move.l  d0,d7
 	bmi	IllegalJPEG	ì«Ç›çûÇﬂÇ»Ç¢
 	bnz	@f
+    .else
+	.xref	jpeg_file_buf
+	.xref	jpeg_file_ofst
+	.xref	jpeg_file_size
+
+	movea.l buf_adrs(a6),a5
+	move.l 	buf_size(a6),d7
+
+	movem.l d1-d2/a0-a1,-(sp)
+	move.l	jpeg_file_ofst,d1
+	move.l	d1,d2
+
+	add.l	d7,d2		* read end offset
+	cmp.l	jpeg_file_size,d2
+	bcs	@f
+	move.l	jpeg_file_size,d2	* reached to EOF
+@@:
+	move.l	d2,d7
+	sub.l	d1,d7		* actual read size
+	beq	@@f
+
+	movea.l jpeg_file_buf,a1
+	adda.l 	d1,a1
+	movea.l a5,a0
+	move.l 	d7,d0
+@@:	move.b 	(a1)+,(a0)+	* copy data
+	subq.l	#1,d0
+	bne	@b
+
+@@:
+	add.l	d7,jpeg_file_ofst
+	movem.l (sp)+,d1-d2/a0-a1
+
+	tst.l	d7
+	bne	@f
+
+    .endif
 
 	*Ç±ÇÍà»è„Ãß≤ŸÇ»ÇµÇ»ÇÃÇ≈ÅADummy Dataê›íË
 	*---------------------
@@ -405,11 +443,19 @@ GetBufAllSub
 ******************************************************************************
 .xdef preDECODE
 preDECODE
+    .if		0
 	clr.w	-(sp)
 	move.l	file_point(a6),-(sp)
 	move.w	Jhandle(a6),-(sp)
 	DOS	_SEEK
 	addq.l	#8,sp
+    .else
+	move.l	file_point(a6),d0
+	cmp.l	jpeg_file_size,d0
+	bcs	@f
+	move.l	jpeg_file_size,d0
+@@:	move.l	d0,jpeg_file_ofst
+    .endif
 
 	moveq.l	#0,d1
 	move.w	d1,preDC(a6)
