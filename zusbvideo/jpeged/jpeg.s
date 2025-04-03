@@ -19,7 +19,7 @@ include   work.inc
   .cpu 68000
 *
 
-*	int jpegload(uint8_t *buffer, size_t bufsize, uint8_t *filebuf, size_t filesize, void (*abortfnc)(void));
+*	int jpegload(uint8_t *buffer, size_t bufsize, uint8_t *filebuf, size_t filesize, void (*abortfnc)(void), int imgsize);
 
 jpegload::
 		movem.l	d1-d7/a0-a6,-(sp)
@@ -76,6 +76,19 @@ mpu_table:	.dc.b	$04,$05
 		move.b	d1,DispMod(a6)
 		bclr.b	#2,Sys_flag2(a6)
 
+* -L0,0,255,255 を指定 (imgsize==1の場合)
+		cmp.l	#1,(4*15+20)(sp)	* imgsize
+		bne	@f
+
+		bset.b	#3,Sys_flag2(a6)	位置指定有りフラグ設定
+		moveq.l	#0,d1
+		move.w  d1,HS(a6)
+		move.w  d1,VS(a6)
+		bset.b	#6,Sys_flag2(a6)	右下位置指定有りフラグ設定
+		move.w	#255,d1
+		move.w  d1,HE(a6)
+		move.w  d1,VE(a6)
+@@:
 
 		lea	jpeg_file_buf,a0
 		movea.l	(4*15+8)(sp),a1		* filebuf
@@ -91,8 +104,8 @@ mpu_table:	.dc.b	$04,$05
 		*位置指定で、右下の座標指定が無い場合は、右下の座標を初期化
 		*------------------------------------
 
-*		btst.b	#6,Sys_flag2(a6)
-*		bne	main_pos_end
+		btst.b	#6,Sys_flag2(a6)
+		bne	main_pos_end
 
 		move.w	VSXsize(a6),d0
 		move.w	VSYsize(a6),d1
@@ -100,7 +113,7 @@ mpu_table:	.dc.b	$04,$05
 		subq.w	#1,d1
 		move.w	d0,HE(a6)
 		move.w	d1,VE(a6)
-*main_pos_end
+main_pos_end
 
 		bsr	Load
 
