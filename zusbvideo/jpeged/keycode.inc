@@ -1,0 +1,21 @@
+K_Esc	equ	$01
+K_BkSp	equ	$0f
+K_Enter	equ	$1d
+K_Space	equ	$35
+K_Home	equ	$36
+K_PgUp	equ	$38
+K_PgDn	equ	$39
+K_Undo	equ	$3a
+K_Left	equ	$3b
+K_Up	equ	$3c
+K_Right	equ	$3d
+K_Down	equ	$3e
+K_T8	equ	$44
+K_T4	equ	$47
+K_T6	equ	$49
+K_T2	equ	$4c
+K_Shift	equ	$70
+K_Ctrl	equ	$71
+K_Opt1	equ	$72
+K_Opt2	equ	$73
+

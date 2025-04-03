@@ -479,22 +479,22 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
 
     printf("start\n");
 
-    if (!mjpeg) {
-        switch (resolution) {
-        case 0:     // no display
-            break;
-        default:
-        case 1:     // 256x256
-            _iocs_crtmod(14);
-            _iocs_g_clr_on();
-            break;
-        case 2:     // 512x512
-            _iocs_crtmod(12);
-            _iocs_g_clr_on();
-            break;
-        }
+    switch (resolution) {
+    case 0:     // no display
+        break;
+    default:
+    case 1:     // 256x256
+        _iocs_crtmod(14);
+        _iocs_g_clr_on();
+        break;
+    case 2:     // 512x512
+        _iocs_crtmod(12);
+        _iocs_g_clr_on();
+        break;
+    }
 
-        yuv2rgbinit();
+    if (!mjpeg) {
+            yuv2rgbinit();
     }
 
     // バッファにデータを入力する
@@ -503,8 +503,6 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
 
     struct iocs_time tm1, tm2;
     tm1 = _iocs_ontime();
-
-    int count = 0;
 
     int s = 1;
     for (int f = 0; (frames == 0) || (f < frames); f++) {
@@ -572,36 +570,29 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
             continue;
         }
 
-        if (mjpeg) {            // MJPEGの場合はJPEGデータをファイルに保存する
-            FILE *fp = NULL;
-            int first = 1;
-            char fname[100];
-            fname[0] = '\0';
+        if (mjpeg) {            // MJPEGの場合はJPEGデータを表示する
+            uint8_t *jpegbuf = wbuf[s];
+            size_t jpegsize = 0;
+
+            int once = false;
             for (int i = firstdesc; i < ndesc; i++) {
                 int size = desc[s][i].actual;
                 if (size == 0) {
                     continue;
                 }
+                if (!once) {
+                    if (!verbose) printf("\x1b[1;1H");
+                    printf("count=%d PTS=%d\n", f + 1, (buf[2] << 8) | buf[3] | (buf[4] << 24) | (buf[5] << 16));
+                    once = true;
+                }
+
                 uint8_t *buf = wbuf[s] + i * use_payload;
                 int end = buf[0] & 2;
                 size -= buf[1];         // stream headerを飛ばす
                 buf += buf[1];
 
-                if (first) {
-                    if (buf[0] == 0xd8 && buf[1] == 0xff) {
-                        sprintf(fname, "video%03d.jpg", count++);
-                        fp = fopen(fname, "wb");
-                        printf("writing %s\n", fname);
-                    } else {
-                        printf("ignore frame\n");
-                        break;
-                    }
-                    first = 0;
-                }
-
-                uint8_t bebuf[1024];
                 uint8_t *p0 = buf;
-                uint8_t *p1 = bebuf;
+                uint8_t *p1 = &jpegbuf[jpegsize];
                 for (int j = 0; j < size; j += 8, p0 += 8, p1 += 8) {
                     __asm__ volatile (
                         "movep.l %0@(0),%%d0\n"
@@ -610,14 +601,14 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
                         "movep.l %%d1,%1@(0)\n"
                     : : "a"(p0), "a"(p1) : "%d0", "%d1");
                 }
-                fwrite(bebuf, size, 1, fp);
+                jpegsize += size;
                 if (end) {
                     break;
                 }
             }
-            if (fp) {
-                fclose(fp);
-            }
+
+            int jpegdisp(uint8_t *filebuf, size_t filesize, int imgsize);
+            jpegdisp(jpegbuf, jpegsize, resolution);
             continue;
         }
 

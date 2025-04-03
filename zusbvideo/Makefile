@@ -33,26 +33,30 @@ CFLAGS = -g -m68000 -I. -Os -DGIT_REPO_VERSION=\"$(GIT_REPO_VERSION)\"
 CFLAGS += -I../include
 ASFLAGS = -m68000 -I.
 
-TARGETS = zusbvideo.x
-OBJS = $(TARGETS:.x=.o)
+TARGET = zusbvideo.x
+OBJS = $(TARGET:.x=.o)
 HEADERS = zusbfunc.h zusbtypes.h zusbregs.h
 LDFLAGS = -s
-LIBS =
+LIBS = jpeged/jpeged.a
 
-all: $(TARGETS)
+all: $(TARGET)
 
-%.x: %.o
-	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
+%.x: %.o makelib
+	$(LD) $(LDFLAGS) -o $@ $< $(LIBS)
 
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $<
 
+makelib:
+	$(MAKE) -C jpeged
+
 install: ../build
-	cp -p $(TARGETS) ../build/bin
+	cp -p $(TARGET) ../build/bin
 	cp -p README.md ../build/doc/zusbvideo.md
 
 clean:
-	rm -f $(TARGETS) $(OBJS) *.elf
+	rm -f $(TARGET) $(OBJS) *.elf
+	$(MAKE) -C jpeged clean
 
 .NOTINTERMEDIATE: $(OBJS)
-.PHONY: all clean install
+.PHONY: all clean install makelib

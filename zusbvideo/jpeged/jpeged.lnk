@@ -1,0 +1,22 @@
+-o jpeged.x
+-p jpeged.map
+jpeg
+error
+save
+putblock
+load
+DISP
+encode
+gethead
+getblock
+decode
+dct
+idct
+idct_y
+yuv
+vtoyuv
+scroll
+mk_mul_tbl
+Huffman
+mes
+
