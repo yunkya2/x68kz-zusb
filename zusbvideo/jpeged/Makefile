@@ -8,17 +8,22 @@ HASFLAGS = -w1
 CC = $(CROSS)gcc
 AS = $(CROSS)gcc
 LD = $(CROSS)gcc
+AR = $(CROSS)ar
+RANLIB = $(CROSS)ranlib
 
 GIT_REPO_VERSION=$(shell git describe --tags --always)
 
 CFLAGS = -g -m68000 -I. -Os -DGIT_REPO_VERSION=\"$(GIT_REPO_VERSION)\"
 ASFLAGS = -m68000 -I.
 LDFLAGS =
+ARFLAGS = rcs
 
 TARGET = jpegedx.x
+TARGETLIB = jpeged.a
 
-OBJS += main.o
+COBJS += main.o
 
+OBJS += jpeged.o
 OBJS += jpeg.o
 OBJS += error.o
 OBJS += setqt.o
@@ -40,21 +45,25 @@ OBJS += mes.o
 #OBJS += save.o
 #OBJS += putblock.o encode.o dct.o vtoyuv.o
 
-all: $(TARGET)
+all: $(TARGET) $(TARGETLIB)
 
 # リンクはELF形式で行う
-$(TARGET): $(OBJS)
+$(TARGET): $(COBJS) $(TARGETLIB) 
 	$(LD) $(LDFLAGS) -o $@ $^
+
+$(TARGETLIB): $(OBJS)
+	$(AR) $(ARFLAGS) $@ $^
+	$(RANLIB) $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # アセンブルはrun68を使ってHAS.Xで実行し、できた*.oをELF形式に変換する
 %.o: %.s
-	$(HAS) $(HASFLAGS) -o tmp.o $< && x68k2elf.py tmp.o $@
+	$(HAS) $(HASFLAGS) -o tmp.o $< && x68k2elf.py tmp.o $@ && rm tmp.o
 
 clean:
-	rm -f $(TARGET) $(OBJS) *.elf
+	rm -f $(TARGET) $(TARGETLIB) $(OBJS) $(COBJS) *.elf
 
-.NOTINTERMEDIATE: $(OBJS)
+.NOTINTERMEDIATE: $(OBJS) $(COBJS)
 .PHONY: all clean

@@ -25,59 +25,45 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <x68k/dos.h>
+#include <setjmp.h>
 #include <x68k/iocs.h>
 
-int jpegdisp(uint8_t *filebuf, size_t filesize, int imgsize);
+int jpegload(uint8_t *buffer, size_t bufsize, uint8_t *filebuf, size_t filesize, void (*abortfnc)(void), int imgsize);
 
-int main(int argc, char **argv)
+#define BUFSIZE     (1024 * 1024)
+
+static jmp_buf jenv;
+static uint8_t *jpegbuf = NULL;
+
+static void jpegabort(void)
 {
-    int imgsize = 2;
+    longjmp(jenv, 1);
+}
 
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <filename> [<size>]\n", argv[0]);
-        return 1;
+int jpegdisp(uint8_t *filebuf, size_t filesize, int imgsize)
+{
+    int res = 0;
+
+    if (jpegbuf == NULL) {
+        jpegbuf = malloc(BUFSIZE);
+        if (jpegbuf == NULL) {
+            return -1;
+        }
     }
 
-    if (argc >= 3) {
-        imgsize = atoi(argv[2]);
+    void *oldvec_buserr = _iocs_b_intvcs(0x02, jpegabort);
+    void *oldvec_adrerr = _iocs_b_intvcs(0x03, jpegabort);
+    void *oldvec_ilinst = _iocs_b_intvcs(0x04, jpegabort);
+
+    if (setjmp(jenv) == 0) {
+        jpegload(jpegbuf, BUFSIZE, filebuf, filesize, jpegabort, imgsize);
+    } else {
+        res = -1;
     }
 
-    FILE *fp = fopen(argv[1], "rb");
-    if (fp == NULL) {
-        fprintf(stderr, "Failed to open file: %s\n", argv[1]);
-        return 1;
-    }
-    fseek(fp, 0, SEEK_END);
-    size_t filesize = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-    char *filebuf = malloc(filesize);
-    if (filebuf == NULL) {
-        fprintf(stderr, "Failed to allocate memory\n");
-        fclose(fp);
-        return 1;
-    }
-    fread(filebuf, 1, filesize, fp);
-    fclose(fp);
-
-    switch (imgsize) {
-    case 1:
-        _iocs_crtmod(14);
-        break;
-    default:
-        _iocs_crtmod(12);
-        break;
-    }
-    _iocs_g_clr_on();
-
-    uint32_t usp = _iocs_b_super(0);
-    int res = jpegdisp(filebuf, filesize, imgsize);
-    _iocs_b_super(usp);
-
-    if (res < 0) {
-        printf("jpegdisp error\n");
-    }
-    free(filebuf);
+    _iocs_b_intvcs(0x02, oldvec_buserr);
+    _iocs_b_intvcs(0x03, oldvec_adrerr);
+    _iocs_b_intvcs(0x04, oldvec_ilinst);
 
     return res;
 }
