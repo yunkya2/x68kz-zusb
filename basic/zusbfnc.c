@@ -58,6 +58,7 @@ static uint8_t zusb_ch_bitmap = 0;    // 使用中のチャネルビットマッ
 static int zusb_ch = -1;              // オープン中のチャネル
 static int zusb_devid = -1;           // 検索中のデバイスID
 static int zusb_if = -1;              // 検索中のインターフェース番号
+static int zusb_ifalt = -1;           // 検索中の代替設定番号
 static int zusb_ep = -1;              // 検索中のエンドポイント番号
 static bool zusb_connected = false;   // デバイス接続フラグ
 static bool zusb_dev_seek = false;    // zusb_seek() 実行フラグ
@@ -138,6 +139,7 @@ static void zusb_rewind_dev(void)
   zusb_devid = -1;
   zusb_dev_seek = false;
   zusb_if = -1;
+  zusb_ifalt = -1;
   zusb_ep = -1;
   zusb_connected = false;
 }
@@ -313,6 +315,7 @@ static int func_zusb_find(void *a)
 
   zusb_dev_seek = false;
   zusb_if = -1;
+  zusb_ifalt = -1;
   zusb_ep = -1;
   retval.i = zusb_devid;
 
@@ -463,7 +466,7 @@ static int func_zusb_getif(void *a)
   xfnc_fac_t *fac = xfnc_get_fac(a);
 
   DPRINTF("func_zusb_getif()\n");
-  DPRINTF(" zusb_devid=%d zusb_if=%d zusb_ep=%02x\n", zusb_devid, zusb_if, zusb_ep);
+  DPRINTF(" zusb_devid=%d zusb_if=%d zusb_ifalt=%d zusb_ep=%02x\n", zusb_devid, zusb_if, zusb_ifalt, zusb_ep);
 
   if (zusb_ch < 0) {
     xfnc_leave(ZERR_NOTOPENED);
@@ -481,7 +484,8 @@ static int func_zusb_getif(void *a)
     while ((res = zusb_get_descriptor(zusbbuf)) > 0) {
       zusb_desc_interface_t *dintf = (zusb_desc_interface_t *)zusbbuf;
       if (dintf->bDescriptorType == ZUSB_DESC_INTERFACE &&
-          dintf->bInterfaceNumber == zusb_if) {
+          dintf->bInterfaceNumber == zusb_if &&
+          dintf->bAlternateSetting == zusb_ifalt) {
         break;
       }
     }
@@ -505,6 +509,7 @@ static int func_zusb_getif(void *a)
 
       retval.i = 1;
       zusb_if = dintf->bInterfaceNumber;
+      zusb_ifalt = dintf->bAlternateSetting;
       zusb_ep = -1;
       if (fac[0].type >= 0) {
         *fac[0].ip = zusb_if;
@@ -577,7 +582,8 @@ static int func_zusb_getep(void *a)
   while ((res = zusb_get_descriptor(zusbbuf)) > 0) {
     zusb_desc_interface_t *dintf = (zusb_desc_interface_t *)zusbbuf;
     if (dintf->bDescriptorType == ZUSB_DESC_INTERFACE &&
-        dintf->bInterfaceNumber == zusb_if) {
+        dintf->bInterfaceNumber == zusb_if &&
+        dintf->bAlternateSetting == zusb_ifalt) {
       break;
     }
   }
