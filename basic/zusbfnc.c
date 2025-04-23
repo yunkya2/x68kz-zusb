@@ -372,7 +372,8 @@ static int func_zusb_find(void *a)
 //  func int zusb_seek(devid;int)
 //  USBデバイスの検索位置を指定のIDに移動します
 //  IN:   devid     デバイスID
-//  OUT:   0        正常終了
+//  OUT:   1        正常終了
+//         0        指定したデバイスIDのデバイスが存在しない
 //        -1        エラー
 
 static const uint16_t xfnc_param_zusb_seek[] = {
@@ -391,11 +392,19 @@ static int func_zusb_seek(void *a)
     xfnc_leave(ZERR_NOTOPENED);
   }
 
-  // 指定されたデバイスIDを検索する
+  int devid = fac[0].i;
+
   zusb_rewind_dev();
+  // devidが0なら最初に戻る
+  if (devid == 0) {
+    retval.i = 1;
+    xfnc_leave(0);
+  }
+
+  // 指定されたデバイスIDを検索する
   zusb_send_cmd(ZUSB_CMD_GETDEV);
   DPRINTF("devid=%d\n", zusb->devid);
-  while (zusb->devid != fac[0].i && zusb->devid != 0) {
+  while (zusb->devid != devid && zusb->devid != 0) {
     if (zusb_send_cmd(ZUSB_CMD_NEXTDEV) < 0) {
       xfnc_leave(ZERR_IOERROR);
     }
@@ -403,10 +412,14 @@ static int func_zusb_seek(void *a)
   }
 
   if (zusb->devid > 0) {
-    zusb_devid = fac[0].i;
+    // 指定したIDのデバイスが見つかった
+    zusb_devid = devid;
     zusb_dev_seek = true;
+    retval.i = 1;
+  } else {
+    // 指定したIDのデバイスが存在しない
+    retval.i = 0;
   }
-  retval.i = 0;
   xfnc_leave(0);
 }
 

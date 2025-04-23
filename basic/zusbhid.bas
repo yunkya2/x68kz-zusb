@@ -16,7 +16,7 @@
   160 endwhile
   170 /***********************************************************************
   180 input "デバイスIDを入力してください:",devid
-  190 zusb_seek(devid)
+  190 if zusb_seek(devid) <= 0 then print "指定したデバイスIDは存在しません":zusb_close():end
   200 dim int mlen(7),mpos(7)
   210 int ppos=0
   220 while zusb_getif(ino,cl,subcl,proto) > 0
