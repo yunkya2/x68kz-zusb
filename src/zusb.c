@@ -284,149 +284,351 @@ void disp_hid_descriptors(int devid, int subclass, int type, uint8_t *desc, void
     }
 }
 
-static char str[3][1024];
-static int strsize[3];
-static char *pstr[3];
+static char rptbuf[3][256];
+static int rptsize[3];
+static int rptremain[3];
+static char *rptptr[3];
 static void report_string_reset(void)
 {
     for (int i = 0; i < 3; i++) {
-        pstr[i] = str[i];
-        *pstr[i] = '\0';
-        strsize[i] = 0;
+        rptptr[i] = rptbuf[i];
+        *rptptr[i] = '\0';
+        rptsize[i] = 0;
+        rptremain[i] = sizeof(rptbuf[i]) - 1;
     }
 }
-static void report_string_disp(int id)
+static int report_string_disp(int id, int verbose)
 {
-    for (int i = 0; i < 3; i++) {
-        *pstr[i] = '\0';
-        if (strsize[i] > 0) {
+    int i;
+    for (i = 0; i < 3; i++) {
+        if (rptsize[i] > 0)
+           break;
+    }
+    if (i >= 3)
+        return false;
+
+    if (verbose) printf("\n");
+    for (i = 0; i < 3; i++) {
+        *rptptr[i] = '\0';
+        if (rptsize[i] > 0) {
             if (id > 0) {
-                printf("    (%2d bytes) [%02x]%s\n", 1 + (strsize[i] / 8), id, str[i]);
+                printf("    (%2d bytes) [%02x]%s\n", 1 + (rptsize[i] / 8), id, rptbuf[i]);
             } else {
-                printf("    (%2d bytes) %s\n", strsize[i] / 8 , str[i]);
+                printf("    (%2d bytes) %s\n", rptsize[i] / 8 , rptbuf[i]);
             }
         }
     }
+    if (verbose) printf("\n");
     report_string_reset();
+    return true;
 }
 
-void disp_hid_report_detail(uint8_t *buf, int len)
+struct report_verbose_string { int key; char *value; };
+
+static char *report_find_verbose_string(int value, struct report_verbose_string *tbl)
+{
+    while (tbl->key > 0) {
+        if (tbl->key == value) {
+            return tbl->value;
+        }
+        tbl++;
+    }
+    return NULL;
+}
+
+//  HID Usage Tables Version 1.6
+//  (https://usb.org/sites/default/files/hut1_6.pdf)
+
+static struct report_verbose_string report_usage_page[] = {
+    { 0x01, "Generic Desktop" },
+    { 0x02, "Simulation Controls" },
+    { 0x03, "VR Controls" },
+    { 0x04, "Sport Controls" },
+    { 0x05, "Game Controls" },
+    { 0x06, "Generic Device Controls" },
+    { 0x07, "Keyboard/Keypad" },
+    { 0x08, "LED" },
+    { 0x09, "Button" },
+    { 0x0a, "Ordinal" },
+    { 0x0b, "Telephoyny Device" },
+    { 0x0c, "Consumer" },
+    { 0x0d, "Digitizer" },
+    { 0x0e, "Haptics" },
+    { 0x0f, "Physical Input Device" },
+    { 0x10, "Unicode" },
+    { 0x11, "SoC" },
+    { 0x12, "Eye and Head Trackers" },
+    { 0x14, "Auxiliary Display" },
+    { 0x20, "Sensors" },
+    { 0x40, "Medical Instrument" },
+    { 0x41, "Braille Display" },
+    { 0x59, "Lightning and Illumination" },
+    { 0x80, "Monitor" },
+    { 0x81, "Monitor Enumerated" },
+    { 0x82, "VESA Virtual Controls" },
+    { 0x84, "Power" },
+    { 0x85, "Battery System" },
+    { 0x8c, "Barode Scanner" },
+    { 0x8d, "Scales" },
+    { 0x8e, "Magnetic Stripe Reader" },
+    { 0x90, "Camera" },
+    { 0x92, "Gaming Device" },
+    { 0xf1d0, "FIDO Alliance" },
+    { -1, NULL },
+};
+static struct report_verbose_string report_usage_0x01[] = {
+    { 0x01, "Pointer" },
+    { 0x02, "Mouse" },
+    { 0x04, "Joystick" },
+    { 0x05, "Gamepad" },
+    { 0x06, "Keyboard" },
+    { 0x07, "Keypad" },
+    { 0x30, "X" },
+    { 0x31, "Y" },
+    { 0x32, "Z" },
+    { 0x33, "Rx" },
+    { 0x34, "Ry" },
+    { 0x35, "Rz" },
+    { 0x36, "Slider" },
+    { 0x37, "Dial" },
+    { 0x38, "Wheel" },
+    { 0x39, "Hat Switch" },
+    { 0x3d, "Start" },
+    { 0x3e, "Select" },
+    { 0x90, "D-pad Up" },
+    { 0x91, "D-pad Down" },
+    { 0x92, "D-pad Right" },
+    { 0x93, "D-pad Left" },
+    { -1, NULL },
+};
+
+void disp_hid_report_detail(uint8_t *buf, int len, int verbose)
 {
     int rsize = 0;
     int rcount = 0;
     int nest = 0;
     int id = -1;
-    int verbose = false;
+    int upage = 0;
     int ch;
 
     report_string_reset();
     while (len > 0) {
+        bool flash = false;
         ch = *buf++;
         len--;
         int tag = (ch >> 4) & 0xf;
         int type = (ch >> 2) & 0x3;
         int size = (ch >> 0) & 0x3;
         uint32_t value;
+        int32_t svalue;
 
-        value = 0;
-        while (size) {
-            value = *buf++;
-            len--;
-            if (size == 1)
+        switch (size) {
+            case 0:
+                value = 0;
+                svalue = 0;
                 break;
-            value |= (*buf++ << 8);
-            len--;
-            if (size == 2)
+            case 1:
+                value = buf[0];
+                svalue = (int8_t)value;
                 break;
-            value |= (*buf++ << 16);
-            value |= (*buf++ << 24);
-            len--;
-            len--;
-            break;
+            case 2:
+                value = buf[0] | (buf[1] << 8);
+                svalue = (int16_t)value;
+                break;
+            case 3:
+                value = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
+                svalue = (int32_t)value;
+                buf++;
+                len--;
+                break;
         }
-        if (verbose) printf("0x%02x tag=%d type=%d size=%d value=0x%lx\n", ch, tag, type, size, value);
+        buf += size;
+        len -= size;
 
+        if (type == 0 && tag == 0x0c) {     // End Collection
+            nest--;
+        }
+        if (type == 1 && tag == 0x08) {     // Report ID
+            report_string_disp(id, verbose);
+        }
+        if (verbose) {
+            printf("0x%02x (tag=%d type=%d size=%d) value=0x%x\t", ch, tag, type, size, value);
+            for (int i = 0; i < nest; i++) {
+                printf("  ");
+            }
+        }
+
+        char ty;
+        int sel;
         switch (type) {
         case 0:     // Main
-            char ty = ' ';
-            int sel = -1;
-            if (verbose) printf("tag=%d rcount=%d rsize=%d\n", tag, rcount, rsize);
+            ty = ' ';
+            sel = -1;
             switch (tag) {
             case 0x0a:      // Collection
-                if (verbose) printf("Collection\n");
+                if (verbose) {
+                    printf("Collection (");
+                    switch (value) {
+                    case 0: printf("Physical"); break;
+                    case 1: printf("Application"); break;
+                    case 2: printf("Logical"); break;
+                    }
+                    printf(")");
+                }
                 nest++;
                 break;
             case 0x0c:     // End Collection
-                if (verbose) printf("End Collection\n");
-                if (--nest == 0) {
-                    report_string_disp(id);
-                }
+                if (verbose) printf("End Collection");
+                flash = (nest == 0);
                 break;
             case 0x08:     //Input
             case 0x09:     //Output
             case 0x0b:     //Feature
                 switch (tag) {
                 case 8:     //Input
+                    if (verbose) printf("Input");
                     ty = 'i';
                     sel = 0;
                     break;
                 case 9:     //Output
+                    if (verbose) printf("Output");
                     ty = 'o';
                     sel = 1;
                     break;
                 case 0x0b:  //Feature
+                    if (verbose) printf("Feature");
                     ty = 'f';
                     sel = 2;
                     break;
                 }
-                if (value & 1)
+                if (value & 1) {
                     ty = '-';
-                if (verbose) printf("rcount=%d rsize=%d\n", rcount, rsize);
-                for (int i = 0; i < rcount; i++) {
-                    if (rsize % 8 == 0) {
+                }
+                if (verbose) {
+                    printf(" (%s,", (value & 1) ? "Const" : "Data");
+                    printf("%s,", (value & 2) ? "Variable" : "Array");
+                    printf("%s)", (value & 4) ? "Relative" : "Absolute");
+                }
+
+                if ((rsize % 8) == 0) {
+                    for (int i = 0; i < rcount; i++) {
+                        if (rptremain[sel] < 1)
+                            break;
+                        *rptptr[sel]++ = ':';
+                        rptremain[sel]--;
                         for (int j = 0; j < rsize; j += 8) {
-                            *pstr[sel]++ = ':';
-                            *pstr[sel]++ = toupper(ty);
-                            *pstr[sel]++ = toupper(ty);
-                            strsize[sel] += 8;
+                            if (rptremain[sel] < 2)
+                                break;
+                            *rptptr[sel]++ = toupper(ty);
+                            *rptptr[sel]++ = toupper(ty);
+                            rptsize[sel] += 8;
+                            rptremain[sel] -= 2;
                         }
-                    } else {
-                        for (int j = 0; j < rsize; j++) {
-                            if ((strsize[sel] % 8) == 0) {
-                                *pstr[sel]++ = ':';
-                            }
-                            *pstr[sel]++ = ty;
-                            strsize[sel]++;
+                        if (rcount > 16) {
+                            char buf[20];
+                            snprintf(buf, sizeof(buf), " x %u", rcount);
+                            int buflen = strlen(buf);
+                            if (rptremain[sel] < buflen)
+                                break;
+                            memcpy(rptptr[sel], buf, buflen);
+                            rptptr[sel] += buflen;
+                            rptsize[sel] += rsize * (rcount - 1);
+                            rptremain[sel] -= buflen;
+                            break;
                         }
                     }
+                } else {
+                    for (int i = 0; i < rsize * rcount; i++) {
+                        if ((rptsize[sel] % 8) == 0) {
+                            if (rptremain[sel] < 9)
+                                break;
+                            strcpy(rptptr[sel], ":        ");
+                            rptptr[sel] += 9;
+                            rptremain[sel] -= 9;
+                        }
+                        rptptr[sel][-1 - (rptsize[sel] % 8)] = ty;
+                        rptsize[sel]++;
+                    }
                 }
-                if (verbose) printf("\n");
                 break;
             }
             break;
 
         case 1:     // Global
             switch (tag) {
+            case 0:
+                upage = value;
+                if (verbose) { 
+                    printf("Usage Page ");
+                    char *s = report_find_verbose_string(value, report_usage_page);
+                    if (s) printf("(%s)", s); else printf("(0x%x)", value);
+                }
+                break;
+            case 1:
+                if (verbose) printf("Logical Min (%d)", svalue);
+                break;
+            case 2:
+                if (verbose) printf("Logical Max (%d)", svalue);
+                break;
+            case 3:
+                if (verbose) printf("Physical Min (%d)", svalue);
+                break;
+            case 4:
+                if (verbose) printf("Physical Max (%d)", svalue);
+                break;
+            case 5:
+                if (verbose) printf("Unit Exponent (%d)", (value & 7) - ((value & 8) ? 8 : 0));
+                break;
+            case 6:
+                if (verbose) printf("Unit (0x%x)", value);
+                break;
             case 7:
+                if (verbose) printf("Report Size (%u)", value);
                 rsize = value;
                 break;
             case 8:
-                report_string_disp(id);
+                if (verbose) printf("Report ID (%u)", value);
                 id = value;
                 break;
             case 9:
+                if (verbose) printf("Report Count (%u)", value);
                 rcount = value;
                 break;
             }
             break;
 
         case 2:     // Local
+            switch (tag) {
+                case 0:
+                    if (verbose) {
+                        printf("Usage ");
+                        char *s = NULL;
+                        switch (upage) {
+                        case 0x01: // Generic Desktop
+                            s = report_find_verbose_string(value, report_usage_0x01);
+                            break;
+                        }
+                        if (s) printf("(%s)", s); else printf("(0x%x)", value);
+                    }
+                    break;
+                case 1:
+                    if (verbose) printf("Usage Min (%u)", value);
+                    break;
+                case 2:
+                    if (verbose) printf("Usage Max (%u)", value);
+                    break;
+                }
             break;
+        }
+
+        if (verbose) printf("\n");
+        if (flash) {
+            report_string_disp(id, verbose);
         }
     }
 }
 
-void disp_hid_report(int devid, int verbose)
+void disp_hid_report(int devid, int verbose, int hid_detail)
 {
     if (n_hid_reports == 0) {
         return;
@@ -462,7 +664,7 @@ void disp_hid_report(int devid, int verbose)
 
         switch (hid_reports[i].type) {
         case 0x22:
-            disp_hid_report_detail(zusbbuf, zusb->ccount);
+            disp_hid_report_detail(zusbbuf, zusb->ccount, hid_detail);
             break;
         }
 
@@ -1056,7 +1258,7 @@ int main(int argc, char **argv)
         .current_config = -1,
         .current_iface = -1,
     };
-    int hid_report = false;
+    int hid_report = 0;
     int devvid = -1;
     int devpid = -1;
 
@@ -1069,7 +1271,7 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[i], "-v") == 0) {
             arg.verbose = true;
         } else if (strcmp(argv[i], "-r") == 0) {
-            hid_report = true;
+            hid_report++;
         } else if (strchr(argv[i], ':') && ((devvid < 0) || (devpid < 0))) {
             devvid = strtol(argv[i], NULL, 16);
             devpid = strtol(strchr(argv[i], ':') + 1, NULL, 16);
@@ -1109,7 +1311,7 @@ int main(int argc, char **argv)
     } else {
         zusb_find_device(disp_descriptors, &arg, 0);
         if (hid_report) {
-            disp_hid_report(arg.devid, arg.verbose);
+            disp_hid_report(arg.devid, arg.verbose, hid_report > 1);
         }
     }
 
