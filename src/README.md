@@ -27,31 +27,89 @@ zusb.x [-h][-v][-r][devid | vid:pid]
   デバイス ID を指定します (省略すると全デバイスの一覧を表示します)
   * デバイスを VID:PID のように指定すると VID, PID が一致するデバイスを探します
 
-### 使用例
-```
-A> zusb
-Device:262 ID:0xcafe-0x4002 X68000Z Remote Drive Mass Storage
-Device:261 ID:0x0d8c-0x0014 C-Media Electronics Inc. USB Audio Device
-Device:260 ID:0x056e-0x7016 Etron Technology, Inc. UCAM-C0220F
-Device:259 ID:0x056e-0x0134 Gtech wireless dongle
-```
+### 説明
 
-```
-A> zusb 259
-Device:259
- Device: USB:110 class:0 subclass:0 protocol:0 maxpacket:64 VID:0x056e PID:0x0134 ver:120
-        Manufacturer: Gtech
-        Product:      wireless dongle
-  Configuration: #1 MaxPower:98mA
-   Interface:    #0 class:3 subclass:1 protocol:1
-    HID:         version:110 country:0 (type:0x22 size:57)
-    Endpoint:    0x81 Interrupt MaxPacket:8
-   Interface:    #1 class:3 subclass:1 protocol:2
-    HID:         version:110 country:0 (type:0x22 size:215)
-    Endpoint:    0x82 Interrupt MaxPacket:8
-```
+* オプションを付けずに実行すると、X68000 Z に接続されている USB デバイスの一覧を表示します
+  * 以下の情報が表示されます
+    * 使用中のチャネル番号(常駐プロセスによって使用中のデバイスの場合)
+    * デバイス ID
+    * デバイスの VID, PID
+    * デバイス名 (Product 文字列)
+    * マニュファクチャ名 (Manufacturer 文字列が設定されている場合)
+  * 実行例
+    ```
+    A>zusb
+    #7 Device:262 0xcafe-0x4012 X68000 Z Remote Drive Device   (X68000 Z)
+       Device:261 0x33dd-0x0011 ZUIKI X68000Z Keyboard         ( )
+       Device:260 0x33dd-0x0013 X68000 Z JOYCARD(BLACK)
+       Device:259 0x33dd-0x0012 ZUIKI X68000Z Mouse
+    ```
 
+* デバイス ID を指定すると、そのデバイスの詳細情報を表示します
+  * 実行例
+    ```
+    A>zusb 261
+    Device:261
+     Device: USB:110 class:0 subclass:0 protocol:0 maxpacket:8 VID:0x33dd PID:0x0011 ver:6016
+            Manufacturer:
+            Product:      ZUIKI X68000Z Keyboard
+      Configuration: #1 MaxPower:500mA
+       Interface:    #0 class:3 subclass:1 protocol:1
+        HID:         version:111 country:0 (type:0x22 size:67)
+        Endpoint:    0x81 Interrupt MaxPacket:8
+       Interface:    #1 class:3 subclass:0 protocol:0
+        HID:         version:111 country:0 (type:0x22 size:125)
+        Endpoint:    0x82 Interrupt MaxPacket:16
+    ```
 
+* `-v` オプションを付けると、ディスクリプタの内容を 16 進ダンプでも表示します
+  * 実行例
+    ```
+    A>zusb -v 260
+    ZUSB version:1.00
+    Device:260
+    12 01 00 02 00 00 00 40 dd 33 13 00 01 00 00 02 00 01
+     Device: USB:200 class:0 subclass:0 protocol:0 maxpacket:64 VID:0x33dd PID:0x0013 ver:1
+            Product:      X68000 Z JOYCARD(BLACK)
+    09 02 29 00 01 01 00 80 fa
+      Configuration: #1 MaxPower:500mA
+    09 04 00 00 02 03 00 00 00
+       Interface:    #0 class:3 subclass:0 protocol:0
+    09 21 11 01 00 01 22 31 00
+        HID:         version:111 country:0 (type:0x22 size:49)
+    07 05 02 03 40 00 0a
+        Endpoint:    0x02 Interrupt MaxPacket:64
+    07 05 81 03 40 00 01
+        Endpoint:    0x81 Interrupt MaxPacket:64
+    ```
+
+* `-r` オプションを付けると、HID デバイスのレポートディスクリプタの内容を表示します
+  * レポートディスクリプタとは、HID デバイスがやり取りするデータのフォーマットを定義するデータです
+  * zusb コマンドでは、レポートディスクリプタのうちデータの並びを定義している箇所のみを簡易的に表示します
+    * `i` は入力、`o` は出力、`f` はフィーチャーレポート(デバイスの設定用)のそれぞれ1ビットのデータ
+    * `II`、`OO`、`FF` は1バイトのデータを表します。
+  * 実行例
+    ```
+    Device:260
+     Device: USB:200 class:0 subclass:0 protocol:0 maxpacket:64 VID:0x33dd PID:0x0013 ver:1
+            Product:      X68000 Z JOYCARD(BLACK)
+      Configuration: #1 MaxPower:500mA
+       Interface:    #0 class:3 subclass:0 protocol:0
+        HID:         version:111 country:0 (type:0x22 size:49)
+        Endpoint:    0x02 Interrupt MaxPacket:64
+        Endpoint:    0x81 Interrupt MaxPacket:64
+    
+    HID Report
+      Configuration:1 Interface:0 type:0x22 size:49
+        ( 4 bytes) :iiiiiiii:----iiii:II:II
+    ```
+    * この例ではジョイカードが、
+      * 1ビットのデータ × 8
+      * 1ビットのデータ × 4 (上位4ビットは未使用)
+      * 1バイトのデータ
+      * 1バイトのデータ
+    * といった構成のデータを送ってくることを示しています
+    
 ## zusbhid - USB HID デバイスのテスト
 
 ### 使用方法
