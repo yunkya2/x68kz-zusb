@@ -132,8 +132,8 @@ zusbhid.x [-h] [devid | vid:pid] [time]
 
 ### 説明
 
-* devid を指定して起動すると、その機器に接続して HID report が来るたびにその内容を16進表示します。
-* USBキーボードのdevidを指定すると、終了するまでエミュレータに通常のキー入力が入らなくなるので注意が必要です。
+* `devid` を指定して起動すると、その機器に接続して HID report が来るたびにその内容を16進表示します。
+* USB キーボードのデバイス ID を指定すると、終了するまでエミュレータに通常のキー入力が入らなくなるので注意が必要です。
 
 
 ## zusbmsc.x - USB MSC デバイスのテスト
@@ -160,8 +160,8 @@ zusbmsc.x [-h] [devid | vid:pid] [sector] [count]
 
 ### 説明
 
-* devid を指定して起動すると、その機器に接続して SCSI INQUIRY コマンドと READ CAPACITY コマンドを発行して情報を表示します
-* sector, countを指定すると、指定されたセクタ番号から指定されたセクタ数分をダンプ表示します。
+* `devid` を指定して起動すると、その機器に接続して SCSI INQUIRY コマンドと READ CAPACITY コマンドを発行して情報を表示します
+* `sector`, `count` を指定すると、指定されたセクタ番号から指定されたセクタ数分をダンプ表示します。
 * MSC Bulk only transport (USB HDD や USB メモリ等) と CBI transport (USB FDD 等) に対応しています。
 
 
@@ -191,7 +191,7 @@ zusbaudio.x [-h][-r<sample rate>] [-v<volume>] [devid | vid:pid] [filename]
 
 ### 説明
 
-* devid、ファイル名を指定するとそのファイルを USB Audio デバイスで再生します
+* `devid`、`filename` を指定するとそのファイルを USB Audio デバイスで再生します
 * 44100Hz 16bit ステレオ PCM に対応しているデバイスであれば動作するはずです。以下のデバイスで動作を確認しています。
   * UGREEN USB オーディオ 変換アダプタ
   * Roland UA-30
@@ -249,9 +249,9 @@ zusbjoyc.x [-s][-r]
 * 実行すると ZUIKI X68000 Z JOYCARD が接続されるのを待ちます
   * Z JOYCARD (VID:0x33dd PID:0x0013) 専用です。他のコントローラは非対応です。
 * 接続すると、JOYCARD からの入力を 16進表示します。10 秒経つと終了します。
-* -s オプションを指定すると常駐して、ジョイカードの入力をキー入力に変換します。
+* `-s` オプションを指定すると常駐して、ジョイカードの入力をキー入力に変換します。
   * 十字キー: カーソルキー
   * A, B ボタン : A, B
   * RIGHT, LEFT ボタン : R, L
   * START, SELECT ボタン : S, E
-* -r オプションを指定すると、常駐している zusbjoyc プロセスがいれば常駐解除します。
+* `-r` オプションを指定すると、常駐している zusbjoyc プロセスがいれば常駐解除します。
