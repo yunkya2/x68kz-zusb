@@ -38,14 +38,15 @@ HACKER'S EDITION 上で ZUSB 対応を有効にしたエミュレータを使用
   * zusbfddrv.txt
   * zusbscsi.txt
   * zusbvideo.txt
-* sdk/ -- ZUSB 対応アプリケーション開発用ファイル & サンプル
+* sdk/ -- ZUSB 対応ソフトウェア開発キット
+  * README-sdk.txt -- 概要説明
   * doc/ -- ZUSB 仕様ドキュメント
     * ZUSB-api.txt -- ZUSB API 仕様
     * ZUSB-specs.txt -- ZUSB レジスタ仕様
     * ZUSB-basic.txt -- X-BASIC 用 ZUSB 外部関数仕様
   * cross/ -- クロス開発環境 [elf2x68k](https://github.com/yunkya2/elf2x68k) 用ヘッダファイル & サンプル
     * include/
-  * xc/ -- XC 用ヘッダファイル、ライブラリ & サンプル
+  * xc/ -- XC, gcc 用ヘッダファイル、ライブラリ & サンプル
     * include/
     * lib/
   * basic/ -- X-BASIC 用外部関数、サンプル

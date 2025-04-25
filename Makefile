@@ -37,8 +37,9 @@ install: all
 	cp -pr include build/sdk/cross
 	cp -p src/zusbhid.c build/sdk/cross
 	cp -p src/Makefile.sample build/sdk/cross/Makefile
+	cp -p README-sdk.md build/sdk
 	cp -p ZUSB-api.md ZUSB-specs.md build/sdk/doc
-	./md2txtconv.py -r build/*.md build/doc/*.md build/sdk/doc/*.md build/zusbfdboot/*.md GIT_REPO_VERSION=$(GIT_REPO_VERSION)
+	./md2txtconv.py -r build/*.md build/doc/*.md build/sdk/*.md build/sdk/doc/*.md build/zusbfdboot/*.md GIT_REPO_VERSION=$(GIT_REPO_VERSION)
 	(cd build && xdftool.py c zusb-$(GIT_REPO_VERSION).xdf README.txt bin sys sdk doc)
 
 release: install
