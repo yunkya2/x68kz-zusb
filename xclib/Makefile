@@ -24,21 +24,20 @@
 SRCDIR = libzusb
 INCDIR = include
 LIBDIR = lib
-SAMPLEDIR = sample
 INSTDIR = ../build/sdk/xc
 
 convert = sed 's/$$/\r/' $(1) | grep -v stdint | sed 's/__attribute__ ((.*))//' | iconv -f utf-8 -t cp932 > $(2)
 
 all:
 
-install: src ../build
+install: src ../build  $(LIBDIR)
 	-mkdir -p $(INSTDIR)
 	cp -pr $(INCDIR) $(LIBDIR) $(INSTDIR)
 	$(call convert,Makefile.sample,$(INSTDIR)/Makefile)
 	$(call convert,zusbhid.c,$(INSTDIR)/zusbhid.c)
 	$(MAKE) clean
 
-src: $(SRCDIR) $(INCDIR) $(LIBDIR) $(SAMPLEDIR)
+src: $(SRCDIR) $(INCDIR)
 	./makefunc.py ../include/zusbfunc.h $(SRCDIR) $(INCDIR)/zusbfunc.h
 	$(call convert,zusb.h,$(INCDIR)/zusb.h)
 	$(call convert,../include/zusbtypes.h,$(INCDIR)/zusbtypes.h)
@@ -46,8 +45,17 @@ src: $(SRCDIR) $(INCDIR) $(LIBDIR) $(SAMPLEDIR)
 	$(call convert,zusb_var.c,$(SRCDIR)/zusb_var.c)
 	$(call convert,Makefile.lib,$(SRCDIR)/Makefile)
 
-$(SRCDIR) $(INCDIR) $(LIBDIR) $(SAMPLEDIR):
+$(SRCDIR) $(INCDIR):
 	mkdir $@
 
+$(LIBDIR):
+	$(MAKE) src
+	$(error run 'make' command in libzusb directory to create zusb library)
+
 clean:
-	rm -rf $(SRCDIR) $(INCDIR) $(SAMPLEDIR)
+	rm -rf $(SRCDIR) $(INCDIR)
+
+cleanlib: clean
+	rm -rf $(LIBDIR)
+
+.PHONY: all install src clean cleanlib

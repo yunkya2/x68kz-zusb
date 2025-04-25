@@ -37,15 +37,19 @@ TARGET = zusbvideo.x
 OBJS = $(TARGET:.x=.o)
 HEADERS = zusbfunc.h zusbtypes.h zusbregs.h
 LDFLAGS = -s
-LIBS = jpeged/jpeged.a
+LIBS = jpeged.a
 
 all: $(TARGET)
 
-%.x: %.o makelib
+%.x: %.o $(LIBS)
 	$(LD) $(LDFLAGS) -o $@ $< $(LIBS)
 
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $<
+
+jpeged.a:
+	$(MAKE) makelib
+	cp jpeged/$@ .
 
 makelib:
 	$(MAKE) -C jpeged
@@ -56,6 +60,9 @@ install: ../build
 
 clean:
 	rm -f $(TARGET) $(OBJS) *.elf
+
+cleanlib: clean
+	rm -f jpeged.a
 	$(MAKE) -C jpeged clean
 
 .NOTINTERMEDIATE: $(OBJS)
