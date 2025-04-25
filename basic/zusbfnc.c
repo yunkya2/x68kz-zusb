@@ -307,6 +307,9 @@ static int func_zusb_find(void *a)
       if (zusb->devid == 0) {
         zusb_devid = -1;
         retval.i = 0;
+        if (fac[0].type >= 0) {
+          *fac[0].ip = 0;
+        }
         xfnc_leave(0);
       }
     }
@@ -318,6 +321,9 @@ static int func_zusb_find(void *a)
   zusb_ifalt = -1;
   zusb_ep = -1;
   retval.i = zusb_devid;
+  if (fac[0].type >= 0) {
+    *fac[0].ip = zusb_devid;
+  }
 
   // デバイスディスクリプタを取得する
   int res;
@@ -328,9 +334,6 @@ static int func_zusb_find(void *a)
       DPRINTF(" device %d 0x%04x:0x%04x\n", zusb_devid,
               zusb_le16toh(ddev->idVendor), zusb_le16toh(ddev->idProduct));
 
-      if (fac[0].type >= 0) {
-        *fac[0].ip = zusb_devid;
-      }
       if (fac[1].type >= 0) {
         *fac[1].ip = zusb_le16toh(ddev->idVendor);
       }
