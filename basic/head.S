@@ -27,16 +27,17 @@
     .extern     xfnc_token
     .extern     xfnc_param
     .extern     xfnc_entry
+    .extern     xfnc_reset
 
 
     .text
 
-    .long   noop            // BASIC起動時の初期化ルーチンのアドレス
-    .long   noop            // RUN時に実行されるサブルーチンのアドレス
+    .long   xfnc_reset      // BASIC起動時の初期化ルーチンのアドレス
+    .long   xfnc_reset      // RUN時に実行されるサブルーチンのアドレス
     .long   noop            // END時に実行されるサブルーチンのアドレス
-    .long   noop            // OS復帰時に実行されるサブルーチンのアドレス
+    .long   xfnc_reset      // OS復帰時に実行されるサブルーチンのアドレス
     .long   noop            // ブログラム中断時に実行されるサブルーチンのアドレス
-    .long   noop            // 一行入力中のCTRL+D押下時に実行されるサブルーチンのアドレス
+    .long   xfnc_reset      // 一行入力中のCTRL+D押下時に実行されるサブルーチンのアドレス
     .long   noop            // Reserved
     .long   noop            // Reserved
     .long   xfnc_token      // トークンテーブル
