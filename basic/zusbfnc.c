@@ -144,6 +144,14 @@ static void zusb_rewind_dev(void)
   zusb_connected = false;
 }
 
+void xfnc_reset(void)
+{
+  DPRINTF("zusb_reset\n");
+  zusb_rewind_dev();
+  zusb_ch_bitmap = 0;
+  zusb_ch = -1;
+}
+
 //****************************************************************************
 // X-BASIC functions
 //****************************************************************************
@@ -892,7 +900,10 @@ static int func_zusb_readwrite(xfnc_fac_t *fac, bool iswrite, bool isasync)
   }
 
   while (!(zusb->stat & ZUSB_STAT_PCOMPLETE(ep))) {
-    _dos_keysns();
+    if (_dos_inpout(0xff) == 3) { // CTRL-C
+      zusb_send_cmd(ZUSB_CMD_CANCELXFER(ep));
+      xfnc_leave(ZERR_IOERROR);
+    }
     if (zusb->stat & ZUSB_STAT_ERROR) {
       xfnc_leave(ZERR_IOERROR);
     }
@@ -905,8 +916,8 @@ static int func_zusb_readwrite(xfnc_fac_t *fac, bool iswrite, bool isasync)
     len /= fac[0].a->size;
   }
 
-  DPRINTF(" readwrite end %d\n", retval.i);
   retval.i = len;
+  DPRINTF(" readwrite end %d\n", retval.i);
   xfnc_leave(0);
 }
 
@@ -1045,7 +1056,10 @@ static int func_zusb_wait(void *a)
   }
 
   while (!(zusb->stat & ZUSB_STAT_PCOMPLETE(ep))) {
-    _dos_keysns();
+    if (_dos_inpout(0xff) == 3) { // CTRL-C
+      zusb_send_cmd(ZUSB_CMD_CANCELXFER(ep));
+      xfnc_leave(ZERR_IOERROR);
+    }
     if (zusb->stat & ZUSB_STAT_ERROR) {
       xfnc_leave(ZERR_IOERROR);
     }
