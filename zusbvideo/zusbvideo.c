@@ -45,11 +45,12 @@ int main(int argc, char **argv)
     int videosize = -1;
     int resolution = -1;
     int mjpeg = false;
+    int wrfile = false;
     int verbose = false;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0) {
-            printf("Usage: %s [-h][-v][-m][-r<resolution>][-s<videosize>] [devid | vid:pid] [frames]\n", argv[0]);
+            printf("Usage: %s [-h][-v][-m][-w][-r<resolution>][-s<videosize>] [devid | vid:pid] [frames]\n", argv[0]);
             printf(" <resolution>: 0=no display 1=256x256(default) 2=512x512\n");
             printf(" <video size>: 0=160x120(default) 1=320x240 2=640x480 3=800x600 4=1280x720\n");
             return 0;
@@ -57,6 +58,8 @@ int main(int argc, char **argv)
             verbose = true;
         } else if (strncmp(argv[i], "-m", 2) == 0) {
             mjpeg = true;
+        } else if (strncmp(argv[i], "-w", 2) == 0) {
+            wrfile = true;
         } else if (strncmp(argv[i], "-r", 2) == 0) {
             resolution = strtol(&argv[i][2], NULL, 0);
         } else if (strncmp(argv[i], "-s", 2) == 0) {
@@ -124,8 +127,8 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    void video_test(int epin, int videosize, int frames, int verbose, int resolution, int mjpeg);
-    video_test(0, videosize, frames, verbose, resolution, mjpeg);
+    void video_test(int epin, int videosize, int frames, int verbose, int resolution, int mjpeg, int wrfile);
+    video_test(0, videosize, frames, verbose, resolution, mjpeg, wrfile);
 
     zusb_disconnect_device();
     zusb_close();
@@ -247,7 +250,7 @@ void disp_video_cs_request(void *buf)
            zusb_le32toh(uvcctrl->dwMaxPayloadTransferSize));
 }
 
-void video_test(int epin, int videosize, int frames, int verbose, int resolution, int mjpeg)
+void video_test(int epin, int videosize, int frames, int verbose, int resolution, int mjpeg, int wrfile)
 {
     int config = 1;
     int use_config = 0;
@@ -477,18 +480,20 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
 
     printf("start\n");
 
-    switch (resolution) {
-    case 0:     // no display
-        break;
-    default:
-    case 1:     // 256x256
-        _iocs_crtmod(14);
-        _iocs_g_clr_on();
-        break;
-    case 2:     // 512x512
-        _iocs_crtmod(12);
-        _iocs_g_clr_on();
-        break;
+    if (!mjpeg || !wrfile) {
+        switch (resolution) {
+        case 0:     // no display
+            break;
+        default:
+        case 1:     // 256x256
+            _iocs_crtmod(14);
+            _iocs_g_clr_on();
+            break;
+        case 2:     // 512x512
+            _iocs_crtmod(12);
+            _iocs_g_clr_on();
+            break;
+        }
     }
 
     if (!mjpeg) {
@@ -501,6 +506,8 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
 
     struct iocs_time tm1, tm2;
     tm1 = _iocs_ontime();
+
+    int count = 0;
 
     int s = 1;
     for (int f = 0; (frames == 0) || (f < frames); f++) {
@@ -561,14 +568,15 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
             }
         }
 
-        if (firstdesc < 0) {    // 不完全なデータしか得られなかったのでスキップする
-            continue;
-        }
-        if (resolution == 0) {  // 画面表示しない
-            continue;
+        if (firstdesc < 0) {
+            continue;   // 不完全なデータしか得られなかったのでスキップする
         }
 
-        if (mjpeg) {            // MJPEGの場合はJPEGデータを表示する
+        if (resolution == 0 && !(mjpeg && wrfile)) {
+            continue;   // 画面表示しない
+        }
+
+        if (mjpeg) {            // MJPEGの場合はJPEGデータを表示/保存する
             uint8_t *jpegbuf = wbuf[s];
             size_t jpegsize = 0;
 
@@ -578,7 +586,7 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
                 if (size == 0) {
                     continue;
                 }
-                if (!once) {
+                if (!wrfile && !once) {
                     if (!verbose) printf("\x1b[1;1H");
                     printf("count=%d PTS=%d\n", f + 1, (buf[2] << 8) | buf[3] | (buf[4] << 24) | (buf[5] << 16));
                     once = true;
@@ -605,8 +613,21 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
                 }
             }
 
-            int jpegdisp(uint8_t *filebuf, size_t filesize, int imgsize);
-            jpegdisp(jpegbuf, jpegsize, resolution);
+            if (wrfile) {
+                FILE *fp = NULL;
+                char fname[100];
+
+                sprintf(fname, "video%03d.jpg", count++);
+                fp = fopen(fname, "wb");
+                if (fp) {
+                    printf("writing %s\n", fname);
+                    fwrite(jpegbuf, jpegsize, 1, fp);
+                    fclose(fp);
+                }
+            } else {
+                int jpegdisp(uint8_t *filebuf, size_t filesize, int imgsize);
+                jpegdisp(jpegbuf, jpegsize, resolution);
+            }
             continue;
         }
 
