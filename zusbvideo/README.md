@@ -18,6 +18,7 @@ X68000 Z に接続した USB カメラの画像を取り込むテストアプリ
 
 * ELECOM UCAM-C0220FBBK (非圧縮のみ対応)
 * ELECOM UCAM-C310FBBK (非圧縮/Motion JPEG)
+* Logicool HD Webcam C525 (非圧縮のみ対応)
 
 
 ## 使用方法
@@ -25,7 +26,7 @@ X68000 Z に接続した USB カメラの画像を取り込むテストアプリ
 コマンドラインから以下のように実行します。
 
 ```
-zusbvideo.x [-h][-v][-m][-r<resolution>][-s<video size>] [devid | vid:pid] [frames]
+zusbvideo.x [-h][-v][-m][-w][-r<resolution>][-s<video size>] [devid | vid:pid] [frames]
 ```
 
 以下のオプションを指定できます。
@@ -37,6 +38,8 @@ zusbvideo.x [-h][-v][-m][-r<resolution>][-s<video size>] [devid | vid:pid] [fram
 * -m\
   画像取得フォーマットを非圧縮から Motion JPEG に変更します
   * USB カメラが Motion JPEG に対応している必要があります
+* -w\
+  画像取得フォーマットが Motion JPEG の場合に、取得した画像をカレントディレクトリに "videoNNN.jpg" というファイル名で保存します (NNN=000～999の数値)。保存した画像は、JPEGED.X のような JPEG ビューアアプリで表示できます。
 * -r\<resolution\>\
   再生時の解像度を指定します (0:表示なし 1:256×256 2:512×512)
 * -s\<video size\>\
