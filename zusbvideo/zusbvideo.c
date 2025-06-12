@@ -319,37 +319,41 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
         } else if (use_intf_subclass == 2) {    // Video Streaming Interface
             switch (desc[1]) {
             case ZUSB_DESC_CS_INTERFACE:
-                if (!mjpeg && desc[2] == 0x04) {            // VS_FORMAT_UNCOMPRESSED
-                    uvc_desc_vs_format_uncompressed_t *dformat = (uvc_desc_vs_format_uncompressed_t *)desc;
-                    current_format_id = dformat->bFormatIndex;
-                    if (memcmp(dformat->guidFormat, guid_yuy2, sizeof(guid_yuy2)) == 0) {
+                if (!mjpeg) {                   // request uncompressed format
+                    if (desc[2] == 0x04) {              // VS_FORMAT_UNCOMPRESSED
+                        uvc_desc_vs_format_uncompressed_t *dformat = (uvc_desc_vs_format_uncompressed_t *)desc;
+                        current_format_id = dformat->bFormatIndex;
+                        if (memcmp(dformat->guidFormat, guid_yuy2, sizeof(guid_yuy2)) == 0) {
+                            use_format_id = current_format_id;
+                        }
+                    } else if (desc[2] == 0x05 &&       // VS_FRAME_UNCOMPRESSED
+                               current_format_id == use_format_id) {
+                        uvc_desc_vs_frame_uncompressed_t *dframe = (uvc_desc_vs_frame_uncompressed_t *)desc;
+                        printf("frame id %d ", dframe->bFrameIndex);
+                        printf("%d x %d ", zusb_le16toh(dframe->wWidth), zusb_le16toh(dframe->wHeight));
+                        printf("%ldbps", zusb_le32toh(dframe->dwMaxBitRate));
+                        printf("\n");
+                        if (zusb_le16toh(dframe->wWidth) == vsize_w &&
+                            zusb_le16toh(dframe->wHeight) == vsize_h) {
+                            use_frame_id = dframe->bFrameIndex;
+                        }
+                    }
+                } else {                        // request MJPEG format
+                    if (desc[2] == 0x06) {              // VS_FORMAT_MJPEG
+                        uvc_desc_vs_format_mjpeg_t *dformat = (uvc_desc_vs_format_mjpeg_t *)desc;
+                        current_format_id = dformat->bFormatIndex;
                         use_format_id = current_format_id;
-                    }
-                } else if (!mjpeg && desc[2] == 0x05 &&     // VS_FRAME_UNCOMPRESSED
-                           current_format_id == use_format_id) {
-                    uvc_desc_vs_frame_uncompressed_t *dframe = (uvc_desc_vs_frame_uncompressed_t *)desc;
-                    printf("frame id %d ", dframe->bFrameIndex);
-                    printf("%d x %d ", zusb_le16toh(dframe->wWidth), zusb_le16toh(dframe->wHeight));
-                    printf("%ldbps", zusb_le32toh(dframe->dwMaxBitRate));
-                    printf("\n");
-                    if (zusb_le16toh(dframe->wWidth) == vsize_w &&
-                        zusb_le16toh(dframe->wHeight) == vsize_h) {
-                        use_frame_id = dframe->bFrameIndex;
-                    }
-                } else if (mjpeg && desc[2] == 0x06) {      // VS_FORMAT_MJPEG
-                    uvc_desc_vs_format_mjpeg_t *dformat = (uvc_desc_vs_format_mjpeg_t *)desc;
-                    current_format_id = dformat->bFormatIndex;
-                    use_format_id = current_format_id;
-                } else if (mjpeg && desc[2] == 0x07 &&      // VS_FRAME_MJPEG
-                           current_format_id == use_format_id) {
-                    uvc_desc_vs_frame_mjpeg_t *dframe = (uvc_desc_vs_frame_mjpeg_t *)desc;
-                    printf("frame id %d ", dframe->bFrameIndex);
-                    printf("%d x %d ", zusb_le16toh(dframe->wWidth), zusb_le16toh(dframe->wHeight));
-                    printf("%ldbps", zusb_le32toh(dframe->dwMaxBitRate));
-                    printf("\n");
-                    if (zusb_le16toh(dframe->wWidth) == vsize_w &&
-                        zusb_le16toh(dframe->wHeight) == vsize_h) {
-                        use_frame_id = dframe->bFrameIndex;
+                    } else if (desc[2] == 0x07 &&       // VS_FRAME_MJPEG
+                               current_format_id == use_format_id) {
+                        uvc_desc_vs_frame_mjpeg_t *dframe = (uvc_desc_vs_frame_mjpeg_t *)desc;
+                        printf("frame id %d ", dframe->bFrameIndex);
+                        printf("%d x %d ", zusb_le16toh(dframe->wWidth), zusb_le16toh(dframe->wHeight));
+                        printf("%ldbps", zusb_le32toh(dframe->dwMaxBitRate));
+                        printf("\n");
+                        if (zusb_le16toh(dframe->wWidth) == vsize_w &&
+                            zusb_le16toh(dframe->wHeight) == vsize_h) {
+                            use_frame_id = dframe->bFrameIndex;
+                        }
                     }
                 }
                 break;
@@ -393,12 +397,8 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
                       use_video_stream_if, scsize, uvcctrl);
     disp_video_cs_request(uvcctrl);
 
-    int req_payload = zusb_le32toh(uvcctrl->dwMaxPayloadTransferSize);
-    // High-bandwidth transferが動作しないのでpayload sizeを最大1024bytesに制限する
-    req_payload = req_payload < 1024 ? req_payload : 1024;
-    printf("requested payload size=%d\n", req_payload);
-
     // Class-Specific Interface Descriptor から設定値を取得する (altsettingを取得)
+    // High-bandwidth transferが動作しないので、1024bytes以下の最大のpayloadを持つaltsettingを採用する
 
     int use_altif = -1;
     int use_payload = -1;
@@ -422,12 +422,10 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
         if (desc[1] == ZUSB_DESC_ENDPOINT) {
             zusb_desc_endpoint_t *dendp = (zusb_desc_endpoint_t *)desc;
             int eppayload = zusb_le16toh(dendp->wMaxPacketSize);
-            // 選択したframe IDが要求するpayloadを満たすendpointのaltsettingを探す
-            if (eppayload >= req_payload) {
-                if (use_payload < 0 || use_payload > eppayload) {
-                    use_payload = eppayload;
-                    use_altif = altif;
-                }
+            // 1024bytes以下で最大サイズのpayloadを持つaltsettingを探す
+            if (eppayload <= 1024 && eppayload > use_payload) {
+                use_payload = eppayload;
+                use_altif = altif;
             }
         }
     }
@@ -435,7 +433,7 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
     printf("format:%d frame:%d altif:%d payload:%dbytes\n",
            use_format_id, use_frame_id, use_altif, use_payload);
 
-    if (use_payload > 1024) {
+    if (use_payload < 0) {
         printf("要求するペイロードサイズにUVCデバイスが対応していません\n");
         return;
     }
@@ -625,7 +623,7 @@ void video_test(int epin, int videosize, int frames, int verbose, int resolution
             }
             if (!once) {
                 if (!verbose) printf("\x1b[10;1H");
-                printf("count=%d PTS=%d\n", f + 1, (buf[2] << 8) | buf[3] | (buf[4] << 24) | (buf[5] << 16));
+                printf("count=%d PTS=%u\n", f + 1, (buf[2] << 8) | buf[3] | (buf[4] << 24) | (buf[5] << 16));
                 once = true;
             }
 
