@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Yuichi Nakamura (@yunkya2)
+ * Copyright (c) 2024,2026 Yuichi Nakamura (@yunkya2)
  *
  * The MIT License (MIT)
  *
@@ -25,7 +25,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdbool.h>
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
@@ -170,7 +169,6 @@ int format_num = 0;
 const format_info_t *format_info = &known_format[0];
 
 int format_drive = -1;    // drive number (1=A: 2=B: ...)
-int format_unit = -1;     // device driver unit number
 
 //****************************************************************************
 // for debugging
@@ -649,7 +647,7 @@ static void usage(void)
 
 int main(int argc, char **argv)
 {
-  int8_t *zusb_channels = NULL;
+  int16_t zusb_channel = -1;
   int dump_sector = 0;
   int dump_count = 1;
 
@@ -740,19 +738,21 @@ int main(int argc, char **argv)
 
   // 指定したドライブが ZUSBFDD デバイスであることを確認する
   struct dos_dpbptr dpb;
-  if (_dos_getdpb(format_drive, &dpb) >= 0) {
-    char *p = (char *)dpb.driver + 14;
-    if (memcmp(p, "\x01ZUSBFDD", 8) == 0) {
-      zusb_channels = &(*(int8_t **)(p - 4))[-4];
-      format_unit = dpb.unit;
-    }
-  }
-  if (zusb_channels == NULL) {
+  if (_dos_getdpb(format_drive, &dpb) < 0 ||
+      memcmp((char *)dpb.driver + 14, "\x01ZUSBFDD", 8) != 0) {
     printf(PROGNAME ": ドライブ %c: はZUSB FDDではありません\n", '@' + format_drive);
     exit(1);
   }
+  if (_dos_ioctrlfdctl(format_drive, ZUSBFDD_IOCTL_GET_CHANNEL,
+                       (char *)&zusb_channel) < 0) {
+    zusb_channel = -1;
+  }
+  if (zusb_channel < 0 || zusb_channel >= ZUSB_N_CH) {
+    printf(PROGNAME ": ドライブ %c: のZUSBチャネルを取得できません\n", '@' + format_drive);
+    exit(1);
+  }
 
-  zusb_set_channel(zusb_channels[format_unit]);
+  zusb_set_channel(zusb_channel);
 
   // フォーマット可能な容量一覧を表示する
 

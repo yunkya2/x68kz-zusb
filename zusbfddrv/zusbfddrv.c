@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Yuichi Nakamura (@yunkya2)
+ * Copyright (c) 2024,2026 Yuichi Nakamura (@yunkya2)
  *
  * The MIT License (MIT)
  *
@@ -86,7 +86,8 @@ struct dos_req_header *reqheader;   // Human68kからのリクエストヘッダ
 
 jmp_buf jenv;
 
-extern int8_t zusb_channels[MAX_DRIVE];
+int8_t zusb_channels[MAX_DRIVE];
+static int active_units;
 
 struct drive {
   const struct dos_bpb **current_bpb;
@@ -653,6 +654,7 @@ int interrupt(void)
     *(char *)&req->fcb = bootpart;
 #endif
 
+    active_units = units;
     req->attr = units;
     req->status = (uint32_t)bpbtable;
 
@@ -665,6 +667,9 @@ int interrupt(void)
   // Command request
   //--------------------------------------------------------------------------
 
+  if (req->unit >= active_units) {
+    return 0x1003;    // Invalid unit
+  }
   d = &drive[req->unit];
   zusb_set_channel(zusb_channels[req->unit]);
   DPRINTF("[%d%d]", req->command, req->unit);
@@ -764,6 +769,13 @@ int interrupt(void)
       break;
     case 0xffff:
       memcpy(req->addr, "ZUSBfdd1", 8);
+      break;
+    case ZUSBFDD_IOCTL_GET_CHANNEL:
+      if (req->addr == NULL || zusb_channels[req->unit] < 0) {
+        err = 0x1003;
+      } else {
+        *(int16_t *)req->addr = zusb_channels[req->unit];
+      }
       break;
     case 0:
       *(uint16_t *)req->addr = (*d->current_bpb)->mediabyte;

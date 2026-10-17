@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Yuichi Nakamura (@yunkya2)
+ * Copyright (c) 2024,2026 Yuichi Nakamura (@yunkya2)
  *
  * The MIT License (MIT)
  *
@@ -104,10 +104,6 @@ loop1:
 #endif
     move.l  %a5,reqheader
     rts
-
-    .global zusb_channels
-zusb_channels:                      // ユニットごとのZUSBチャネル番号
-    .space  4
 
 interrupt_asm:
     movem.l %d1-%d2/%a0-%a2/%a5,%sp@-
