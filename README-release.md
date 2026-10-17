@@ -1,6 +1,6 @@
 # X68000 Z ZUSB 関連ツール & 仕様ドキュメント (GIT_REPO_VERSION)
 
-Copyright (c) 2025 Yuichi Nakamura (@yunkya2)
+Copyright (c) 2025,2026 Yuichi Nakamura (@yunkya2)
 
 URL: https://github.com/yunkya2/x68kz-zusb
 
@@ -29,7 +29,7 @@ HACKER'S EDITION 上で ZUSB 対応を有効にしたエミュレータを使用
   * zusbvideo.x -- USB Video デバイスのテスト
 * sys/ -- ZUSB 関連デバイスドライバ
   * zusbether.x -- USB LAN アダプタドライバ
-  * zusbfddrv.sys -- USB FDD ドライバ
+  * zusbfddrv.x -- USB FDD ドライバ
   * zusbmodrv.sys -- USB MO ドライバ
   * zusbscsi.sys -- USB SCSI IOCS ドライバ
 * doc/ -- ツールやデバイスドライバのドキュメント
