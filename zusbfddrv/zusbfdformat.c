@@ -31,10 +31,10 @@
 
 #include <x68k/iocs.h>
 #include <x68k/dos.h>
+#include <x68k/dos_internal.h>
 
 #include <zusb.h>
 #include <scsi_cmd.h>
-
 #include "zusbfddrv.h"
 
 //****************************************************************************
@@ -739,7 +739,7 @@ int main(int argc, char **argv)
   // 指定したドライブが ZUSBFDD デバイスであることを確認する
   struct dos_dpbptr dpb;
   if (_dos_getdpb(format_drive, &dpb) < 0 ||
-      memcmp((char *)dpb.driver + 14, "\x01ZUSBFDD", 8) != 0) {
+      memcmp((char *)dpb.driver + 14, DRIVER_NAME, sizeof(DRIVER_NAME) - 1) != 0) {
     printf(PROGNAME ": ドライブ %c: はZUSB FDDではありません\n", '@' + format_drive);
     exit(1);
   }
