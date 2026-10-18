@@ -32,17 +32,24 @@
 
 #include <x68k/iocs.h>
 #include <x68k/dos.h>
+#include <x68k/dos_internal.h>
 
 #include <zusb.h>
 #include <scsi_cmd.h>
+#include "zusbfddrv_internal.h"
 
-#include "zusbfddrv.h"
+//****************************************************************************
+// Device header
+//****************************************************************************
+
+#ifndef CONFIG_BOOTDRIVER
+TSR_DEVICE(_DEV_BDEV | _DEV_IOCTRL | _DEV_SPIOCTRL, DRIVER_NAME, interrupt);
+#endif
 
 //****************************************************************************
 // Constants
 //****************************************************************************
 
-#define MAX_DRIVE     4     // 最大ドライブ数
 #define RETRY_COUNT   3     // read/writeエラーのリトライ回数
 #define DEV_TIMEOUT   300   // SCSIデバイス タイムアウト時間 (10ms単位)
 
@@ -73,21 +80,14 @@ static const uint16_t sense_errcode[] = {
   0x700c,   // 15:Reserved           -> その他のエラー
 };
 
-#ifdef CONFIG_BOOTDRIVER
-#define _dos_putchar(...)
-#define _dos_print(...)
-#endif
-
 //****************************************************************************
 // Global variables
 //****************************************************************************
 
-struct dos_req_header *reqheader;   // Human68kからのリクエストヘッダ
-
 jmp_buf jenv;
 
 int8_t zusb_channels[MAX_DRIVE];
-static int active_units;
+int active_units;
 
 struct drive {
   const struct dos_bpb **current_bpb;
@@ -107,16 +107,19 @@ struct drive *d;
 
 const struct dos_bpb *bpbtable[MAX_DRIVE];
 
+#ifndef CONFIG_BOOTDRIVER
+struct dos_dpb dpbs[MAX_DRIVE];
+struct resident_state state;
+#endif
+
 //****************************************************************************
 // for debugging
 //****************************************************************************
 
 #ifdef DEBUG
 #include <x68k/iocs.h>
-char heap[1024];                // temporary heap for debug print
-void *_HSTA = heap;
-void *_HEND = heap + 1024;
-void *_PSP;
+TSR_HEAP(1024);                 // temporary heap for debug print
+TSR_NO_ENVIRON();
 
 void DPRINTF(char *fmt, ...)
 {
@@ -160,10 +163,11 @@ static zusb_endpoint_config_t epcfg[ZUSB_N_EP] = {
 #define EP_BULK_OUT   2
 #define EP_INTERRUPT  4 
 
-// デバイスの接続処理を行う
-static int connect_fdd(void)
+// 指定ユニットのデバイスへ接続する。productが指定された場合は製品名も取得する。
+int connect_fdd(int unit, char *product, int product_size)
 {
   int devid = 0;
+  d = &drive[unit];
 
   DPRINTF("connect_fdd: ");
 
@@ -187,6 +191,10 @@ static int connect_fdd(void)
       zusb->pcfg[EP_BULK_OUT] = bulk_out;
       zusb->pcfg[EP_BULK_OUT + 1] = bulk_out;
       zusb->pcfg[EP_INTERRUPT] = interrupt;
+
+      if (product != NULL && d->iProduct) {
+        zusb_get_string_descriptor(product, product_size, d->iProduct);
+      }
 
       DPRINTF("%d\r\n", devid);
       return 0;
@@ -411,8 +419,10 @@ int msc_scsi_sendcmd(const void *cmd, int cmd_len, int dir, void *buf, int size)
 //----------------------------------------------------------------------------
 
 // ドライブの内部データを初期化する
-int initialize_drive(void)
+void initialize_drive(int unit)
 {
+  d = &drive[unit];
+  d->current_bpb = &bpbtable[unit];
   *d->current_bpb = &known_bpb[0];    // default BPB : 2HD 1232kB
   d->medium_change_reported = false;
   d->medium_write_protected = false;
@@ -560,107 +570,13 @@ int do_read_write(uint8_t cmd, int dir, uint32_t lba, uint32_t count, void *buf)
 // Device driver interrupt rountine
 //****************************************************************************
 
-int interrupt(void)
+int interrupt(struct dos_req_header *req)
 {
   uint16_t err = 0;
-  struct dos_req_header *req = reqheader;
-
-  //--------------------------------------------------------------------------
-  // Initialization
-  //--------------------------------------------------------------------------
 
   if (req->command == 0x00) {
-    // Initialize
-    _dos_print("\r\nX68000 Z USB FDD device driver version " GIT_REPO_VERSION "\r\n");
-
-    // パラメータからユニット数を取得する (/u<ユニット数>)
-#ifndef CONFIG_DRIVES
-    int units = 1;
-#else
-    int units = CONFIG_DRIVES;
-#endif
-
-#ifndef CONFIG_BOOTDRIVER
-    char *p = (char *)req->status;
-    while (*p != '\0') {
-      if (*p == '/' || *p =='-') {
-        p++;
-        switch (*p | 0x20) {
-        case 'u':         // /u<units> .. ユニット数設定
-          units = *(++p) - '0';
-          if (units < 1 || units > MAX_DRIVE) {
-            units = 1;
-          }
-          break;
-        }
-      }
-      p += strlen(p) + 1;
-    }
-#endif
-
-    // ドライブ数だけZUSBチャネルを確保する
-    for (int i = 0; i < units; i++) {
-      d = &drive[i];
-      d->current_bpb = &bpbtable[i];
-      initialize_drive();
-      if ((zusb_channels[i] = zusb_open_protected()) < 0) {
-        _dos_print("ZUSB デバイスが見つかりません\r\n");
-        return 0x700d;
-      }
-    }
-
-    // (可能なら)デバイスへ接続する
-    for (int i = 0; i < units; i++) {
-      d = &drive[i];
-      zusb_set_channel(zusb_channels[i]);
-      char product[256];
-      product[0] = '\0';
-      if (connect_fdd() == 0) {
-        if (d->iProduct) {
-          zusb_get_string_descriptor(product, sizeof(product), d->iProduct);
-        }
-      } else {
-        int runits = i;
-        for (; i < units; i++) {
-          zusb_set_channel(zusb_channels[i]);
-          zusb_close();
-          zusb_channels[i] = -1;
-        }
-        units = runits;
-        if (units == 0) {
-          _dos_print("USBフロッピーディスクが接続されていません\r\n");
-          return 0x700d;
-        } else {
-          break;
-        }
-      }
-      _dos_print("ドライブ");
-      _dos_putchar('A' + *(uint8_t *)&req->fcb + i);
-      _dos_print(":でUSBフロッピーディスク");
-      if (product[0]) {
-        _dos_print(" (");
-        _dos_print(product);
-        _dos_print(") ");
-      }
-      _dos_print("が利用可能です\r\n");
-    }
-
- #ifdef CONFIG_BOOTDRIVER
-    /* SCSI ROM のデバイスドライバ組み込み処理から渡される値
-     *「何番目のパーティションから起動するか」を Human68k のドライバ初期化処理に返す
-     * この値に基づいてどのドライブから起動するか (CONFIG.SYSをどのドライブから読むか) が決まる
-     */
-    extern uint8_t bootpart;
-    *(char *)&req->fcb = bootpart;
-#endif
-
-    active_units = units;
-    req->attr = units;
-    req->status = (uint32_t)bpbtable;
-
-    extern char _end;
-    req->addr = &_end;
-    return 0;
+    // INIT要求は非常駐部で処理する
+    return zusbfddrv_initialize(req);
   }
 
   //--------------------------------------------------------------------------
@@ -676,14 +592,14 @@ int interrupt(void)
 
   if (d->devid < 0) {
     // USBデバイスを再接続する
-    if (connect_fdd() < 0) {
+    if (connect_fdd(req->unit, NULL, 0) < 0) {
       return 0x7002;    // ドライブの準備が出来ていない
     }
   }
 
   if (setjmp(jenv)) {
     // USBデバイスが切り離された
-    initialize_drive();
+    initialize_drive(req->unit);
     zusb_disconnect_device();
     return 0x7002;      // ドライブの準備が出来ていない
   }
@@ -804,5 +720,7 @@ int interrupt(void)
 // Dummy program entry
 //****************************************************************************
 
+#ifdef CONFIG_BOOTDRIVER
 void _start(void)
 {}
+#endif

@@ -22,11 +22,12 @@
  * THE SOFTWARE.
  */
 
-/* Human68k device driver header */
+#ifndef CONFIG_BOOTDRIVER
+#error head.S is only for CONFIG_BOOTDRIVER
+#endif
 
-    .text
+    .section ".header","ax"
 
-    .extern reqheader
     .extern interrupt
 
 devheader:
@@ -35,7 +36,6 @@ devheader:
     .long   strategy            // strategy routine entry point
     .long   interrupt_asm       // interrupt routine entry point
 
-#ifdef CONFIG_BOOTDRIVER
     .ascii  "\x01SCHDISK"       // (SCSI BOOTROMはこの名前のドライバでないと認識しない)
 
     .global bootpart            // SCSI ID0から数えて何番目のパーティションから起動するか
@@ -57,12 +57,10 @@ bsssize:
     .long   0                   // bssセクションのサイズ
 
 devname:
-#endif
     .ascii  "\x01ZUSBFDD"       // device driver name
 
 
 strategy:
-#ifdef CONFIG_BOOTDRIVER
     movem.l %d0-%d1/%a0-%a3,%sp@-   // 初回実行時のみ再配置処理を行う
 
     lea.l   %pc@(devheader),%a0     // a0: デバイスドライバ先頭アドレス
@@ -101,23 +99,25 @@ loop1:
 
     movem.l %sp@+,%d0-%d1/%a0-%a3
 3:
-#endif
     move.l  %a5,reqheader
     rts
 
+reqheader:
+    .long   0
+
 interrupt_asm:
-    movem.l %d1-%d2/%a0-%a2/%a5,%sp@-
-#ifdef CONFIG_BOOTDRIVER
+    movem.l %d0-%d2/%a0-%a2,%sp@-
     lea.l   %pc@(scsiidd2),%a0
     move.b  %d2,%a0@                // ドライバ初期化時に渡されるSCSI IDを保存
-#endif
+    pea.l   %pc@(devheader)
+    move.l  reqheader,%sp@-
     bsr     interrupt
-    movea.l reqheader,%a5
+    movea.l %sp@+,%a0
+    addq.l  #4,%sp
+    move.b  %d0,%a0@(3)             // errl エラーコードを設定
     ror.w   #8,%d0
-    move.b  %d0,%a5@(4)             // errh エラーコードを設定
-    rol.w   #8,%d0
-    move.b  %d0,%a5@(3)             // errl エラーコードを設定
-    movem.l %sp@+,%d1-%d2/%a0-%a2/%a5
+    move.b  %d0,%a0@(4)             // errh エラーコードを設定
+    movem.l %sp@+,%d0-%d2/%a0-%a2
     rts
 
     .end
