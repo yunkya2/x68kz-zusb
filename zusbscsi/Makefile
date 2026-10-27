@@ -36,7 +36,8 @@ CFLAGS += -I../libtsr/include -D__DOS_INLINE__ -D__IOCS_INLINE__
 ASFLAGS = -m68000 -I.
 
 TARGETS = zusbscsi.x zusbmodrv.sys
-HEADERS = zusbscsi.h ../libtsr/include/x68k/tsr.h ../libtsr/include/x68k/dos_internal.h
+HEADERS = zusbscsi.h zusbscsi_internal.h zusbmodrv.h
+HEADERS += ../libtsr/include/x68k/tsr.h ../libtsr/include/x68k/dos_internal.h
 LDFLAGS = -s -specs=nano.specs
 LIBS =
 
@@ -50,7 +51,7 @@ zusbscsi.x: zusbscsi_main.o zusbscsi_resident.o ../libtsr/lib/libx68ktsr.a
 	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 zusbscsi_resident.o: zusbscsi.o scsiiocs.o ../libtsr/lib/libx68ktsr.a
-	$(TSRGEN) -o $@ $< scsiiocs.o
+	$(TSRGEN) -u zusbscsi_initialize -o $@ $< scsiiocs.o
 
 ../libtsr/lib/libx68ktsr.a:
 	$(MAKE) -C ../libtsr all

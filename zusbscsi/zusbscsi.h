@@ -11,19 +11,6 @@
 #define ZUSBSCSI_STATE_MAGIC 0x5a534354UL
 #define ZUSBSCSI_MAX_DRIVE 4
 
-struct zusb_unit;
-
-struct zusbscsi_state {
-  uint32_t magic;
-  void *oldvector;
-  void *newvector;
-  int8_t channels[ZUSBSCSI_MAX_DRIVE];
-  uint8_t mask;
-  struct zusb_unit *units;
-};
-
-int zusbscsi_initialize(int argc, char **argv);
-
 //****************************************************************************
 // Private structure definitions
 //****************************************************************************
@@ -38,6 +25,16 @@ struct zusb_unit {        // sizeof(struct zusb_unit) = 10 (head_scsi.S の定�
   uint8_t protocol;       // MSC protocol (0x50:BBB のみ対応)
   uint16_t vid;           // このデバイスのvendor ID (0ならVIDをチェックしない)
   uint16_t pid;           // このデバイスのproduct ID (0ならPIDをチェックしない)
+};
+
+// ZUSB SCSIドライバの状態情報
+struct zusbscsi_state {
+  uint32_t magic;
+  void *oldvector;
+  void *newvector;
+  int8_t channels[ZUSBSCSI_MAX_DRIVE];
+  uint8_t mask;
+  struct zusb_unit *units;
 };
 
 #endif /* _ZUSBSCSI_H_ */
