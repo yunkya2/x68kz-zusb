@@ -33,6 +33,7 @@
 
 #include <x68k/iocs.h>
 #include <x68k/dos.h>
+#include <x68k/tsr.h>
 
 #include <zusb.h>
 #include <scsi_cmd.h>
@@ -43,7 +44,7 @@
 // Constants
 //****************************************************************************
 
-#define MAX_DRIVE     4     // 最大ドライブ数
+#define MAX_DRIVE     ZUSBSCSI_MAX_DRIVE
 #define DEV_TIMEOUT   500   // SCSIデバイス タイムアウト時間 (10ms単位)
 
 // MSC接続で使用するendpoint
@@ -61,14 +62,15 @@ static zusb_endpoint_config_t epcfg[ZUSB_N_EP] = {
 // Global variables
 //****************************************************************************
 
-struct dos_req_header *reqheader;         // Human68kからのリクエストヘッダ
+TSR_DEVICE(_DEV_CDEV, ZUSBSCSI_NAME, interrupt);
 
 extern void *scsiiocs_org;                // ベクタ変更前のIOCS _SCSIDRV処理アドレス
 extern uint8_t zusbscsi_mask;             // ZUSB MOドライバのSCSI ID処理マスク
 extern uint8_t zusb_selected;             // SCSI IOCSがZUSB MOドライバを選択中か
 extern void scsiiocs_zusb();              // 変更後のIOCS _SCSIDRV処理
 
-extern struct zusb_unit zusb_unit[MAX_DRIVE];
+struct zusb_unit zusb_unit[MAX_DRIVE];
+static struct zusbscsi_state state;
 
 //****************************************************************************
 // Static variables
@@ -83,10 +85,8 @@ struct zusb_unit *zu;
 
 #ifdef DEBUG
 #include <x68k/iocs.h>
-char heap[1024];                // temporary heap for debug print
-void *_HSTA = heap;
-void *_HEND = heap + 1024;
-void *_PSP;
+TSR_HEAP(1024);                 // temporary heap for debug print
+TSR_NO_ENVIRON();
 
 void DPRINTF(char *fmt, ...)
 {
@@ -381,19 +381,11 @@ unsigned long hextoul(const char *p, char **endp)
 }
 
 //****************************************************************************
-// Device driver interrupt rountine
+// Device driver initialization
 //****************************************************************************
 
-int interrupt(void)
+int zusbscsi_initialize(int argc, char **argv)
 {
-  uint16_t err = 0;
-  struct dos_req_header *req = reqheader;
-
-  // Initialize以外はエラー
-  if (req->command != 0x00) {
-    return 0x700d;
-  }
-
   _dos_print("\r\nX68000 Z USB Pseudo SCSI IOCS driver version " GIT_REPO_VERSION "\r\n");
 
   /*
@@ -413,15 +405,12 @@ int interrupt(void)
   // コマンドラインパラメータを解析する
   int ch;
   int units = 0;
-  char *p = (char *)req->status;
-  while (*p++ != '\0')    // デバイスドライバ名をスキップする
-    ;
-  while (*p != '\0') {
+  for (int arg = 0; arg < argc; arg++) {
+    char *p = argv[arg];
     if (*p == '/' || *p == '-') {
       p++;
       if ((p[0] | 0x20) == 'i') {
         if ((p[1] | 0x20) != 'd') {
-          p += strlen(p) + 1;
           continue;
         }
         p += 2;
@@ -432,7 +421,7 @@ int interrupt(void)
           _dos_print("ZUSB デバイスが見つかりません\r\n");
           for (int i = 0; i < MAX_DRIVE; i++) {
             if (zusb_unit[i].scsiid >= 0) {
-              zusb_set_channel(i);
+              zusb_set_channel(zusb_unit[i].ch);
               zusb_close();
             }
           }
@@ -456,7 +445,6 @@ int interrupt(void)
         }
       }
     }
-    p += strlen(p) + 1;
   }
 
   if (units == 0) {
@@ -465,7 +453,7 @@ int interrupt(void)
   }
 
   // リモートHDSドライバ用にIOCS _SCSIDRV処理を変更する
-  scsiiocs_org = _iocs_b_intvcs(0x01f5, scsiiocs_zusb);
+  scsiiocs_org = (void *)_iocs_b_intvcs(0x01f5, scsiiocs_zusb);
 
   int disp = false;
   for (int i = 0; i < MAX_DRIVE; i++) {
@@ -526,11 +514,36 @@ int interrupt(void)
     return 0x700d;
   }
 
-  extern char _end;
-  req->addr = &_end;
+  state.magic = ZUSBSCSI_STATE_MAGIC;
+  state.oldvector = scsiiocs_org;
+  state.newvector = scsiiocs_zusb;
+  for (int i = 0; i < MAX_DRIVE; i++) {
+    state.channels[i] = zusb_unit[i].ch;
+  }
+  state.mask = zusbscsi_mask;
+  state.units = zusb_unit;
+  TSR_THISDEV->data = &state;
 
   return 0;
 }
+
+int interrupt(struct dos_req_header *req, tsr_device_t dev)
+{
+  (void)dev;
+  if (req->command != 0x00) {
+    return 0x700d;
+  }
+
+  char *argv[MAX_DRIVE + 2];
+  int argc = tsr_parseinitparam((void *)req->status, argv, MAX_DRIVE + 2);
+  int result = zusbscsi_initialize(argc > 0 ? argc - 1 : 0, argv + 1);
+  if (result == 0) {
+    extern char _tsr_end;
+    req->addr = &_tsr_end;
+  }
+  return result;
+}
+
 
 //****************************************************************************
 // ZUSB SCSI IOCS call
@@ -884,10 +897,3 @@ int zusbscsi(uint32_t d1, uint32_t d2, uint32_t d3, uint32_t d4, uint32_t d5, vo
   DPRINTF("res=%d\r\n", res);
   return res;
 }
-
-//****************************************************************************
-// Dummy program entry
-//****************************************************************************
-
-void _start(void)
-{}
