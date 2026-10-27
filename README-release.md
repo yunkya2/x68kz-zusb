@@ -30,8 +30,7 @@ HACKER'S EDITION 上で ZUSB 対応を有効にしたエミュレータを使用
 * sys/ -- ZUSB 関連デバイスドライバ
   * zusbether.x -- USB LAN アダプタドライバ
   * zusbfddrv.x -- USB FDD ドライバ
-  * zusbmodrv.sys -- USB MO ドライバ
-  * zusbscsi.sys -- USB SCSI IOCS ドライバ
+  * zusbscsi.x -- USB SCSI IOCS ドライバ
 * doc/ -- ツールやデバイスドライバのドキュメント
   * zusbtools.txt
   * zusbether.txt
