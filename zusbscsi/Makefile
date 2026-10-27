@@ -35,7 +35,7 @@ CFLAGS += -I../include
 CFLAGS += -I../libtsr/include -D__DOS_INLINE__ -D__IOCS_INLINE__
 ASFLAGS = -m68000 -I.
 
-TARGETS = zusbscsi.x zusbmodrv.sys
+TARGETS = zusbscsi.x zusbmodrv.x
 HEADERS = zusbscsi.h zusbscsi_internal.h zusbmodrv.h
 HEADERS += ../libtsr/include/x68k/tsr.h ../libtsr/include/x68k/dos_internal.h
 LDFLAGS = -s -specs=nano.specs
@@ -56,8 +56,11 @@ zusbscsi_resident.o: zusbscsi.o scsiiocs.o ../libtsr/lib/libx68ktsr.a
 ../libtsr/lib/libx68ktsr.a:
 	$(MAKE) -C ../libtsr all
 
-zusbmodrv.sys: head_modrv.o zusbmodrv.o
-	$(LD) -nostartfiles -s -o $@ $^ $(LIBS)
+zusbmodrv.x: zusbmodrv_main.o zusbmodrv_resident.o ../libtsr/lib/libx68ktsr.a
+	$(LD) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+zusbmodrv_resident.o: zusbmodrv.o ../libtsr/lib/libx68ktsr.a
+	$(TSRGEN) -u interrupt -o $@ $<
 
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $<

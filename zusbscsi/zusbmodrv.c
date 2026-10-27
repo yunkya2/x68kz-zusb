@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Yuichi Nakamura (@yunkya2)
+ * Copyright (c) 2025,2026 Yuichi Nakamura (@yunkya2)
  *
  * The MIT License (MIT)
  *
@@ -22,35 +22,21 @@
  * THE SOFTWARE.
  */
 
-/* Human68k device driver header */
+#include <stdint.h>
+#include <x68k/dos.h>
+#include <x68k/tsr.h>
+#include "zusbmodrv.h"
 
-    .text
+//****************************************************************************
+// Global variables
+//****************************************************************************
 
-    .global devheader
-    .extern reqheader
-    .extern interrupt
+TSR_DEVICE(_DEV_BDEV | _DEV_IOCTRL, MODRV_NAME, interrupt);
 
-devheader:
-    .long   -1                  // link pointer
-    .word   0x4000              // device type
-    .long   strategy            // strategy routine entry point
-    .long   interrupt_asm       // interrupt routine entry point
-    .ascii  "\x01ZUSBSCH"       // device driver name
-    .long   0
+int modrv_scsiid = -1;  // 常駐するドライバが使用するSCSI ID
 
-strategy:
-    move.l  %a5,reqheader
-    rts
+// MOメディア内のSCSIデバイスドライバの読み込み用バッファ
+// (0x0800から0x4000までを読み込み、先頭0x400バイトを除いて常駐させる)
+// + DPB用バッファ (起動後の常駐の場合)
 
-interrupt_asm:
-    movem.l %d1-%d2/%a0-%a2/%a5,%sp@-
-    bsr     interrupt
-    movea.l reqheader,%a5
-    ror.w   #8,%d0
-    move.b  %d0,%a5@(4)             // errh エラーコードを設定
-    rol.w   #8,%d0
-    move.b  %d0,%a5@(3)             // errl エラーコードを設定
-    movem.l %sp@+,%d1-%d2/%a0-%a2/%a5
-    rts
-
-    .end
+uint8_t driver_image[0x4000 - 0x0800] __attribute__((aligned(4)));
