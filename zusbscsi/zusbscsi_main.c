@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 
+#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -53,6 +54,28 @@ static unsigned long hextoul(const char *p, char **endp)
     *endp = (char *)p - 1;
   }
   return val;
+}
+
+// SUSIE の各ドライブに AskSDD を発行し、使用中の SCSI ID を集める
+static uint8_t susie_used_ids(void)
+{
+  uint8_t used_ids = 0;
+  for (int drive = 1; drive <= 26; drive++) {
+    uint8_t signature[256];
+    if (_dos_ioctrlfdctl(drive, -1, signature) != 0 ||
+        memcmp(signature, "SUSIE", 5) != 0) {
+      continue;
+    }
+
+    uint32_t params[8] = {0};  // pr0=0: AskSDD
+    if (_dos_ioctrlfdctl(drive, 0x5355, (char *)params) == 0) {
+      int scsiid = (params[0] >> 8) & 0x0f;
+      if (scsiid < 8) {
+        used_ids |= 1 << scsiid;
+      }
+    }
+  }
+  return used_ids;
 }
 
 //****************************************************************************
@@ -135,6 +158,13 @@ int zusbscsi_initialize(int argc, char **argv)
     zu = &zusb_unit[i];
     if (zu->scsiid < 0) {
       continue;     // このユニットにはSCSI IDは割り当てられていない
+    }
+    volatile uint8_t *scsidrvflg = (volatile uint8_t *)0x000cec;
+    if (*scsidrvflg & (1 << zu->scsiid)) {
+      _dos_print("SCSI ID ");
+      _dos_putchar('0' + zu->scsiid);
+      _dos_print(" は使用中です\r\n");
+      continue;     // このSCSI IDは既に使用中
     }
     zusb_set_channel(zu->ch);
     if (connect_msc() < 0) {
@@ -229,15 +259,27 @@ int main(int argc, char **argv)
     struct zusbscsi_state *state = tsr_getdevdata(dev);
     int ssp = tsr_super(0);
     uint8_t loaded_ids = *(volatile uint8_t *)0x000cec;
-    tsr_super(ssp);
-    if (state == NULL || state->magic != ZUSBSCSI_STATE_MAGIC ||
-        !tsr_isfreeable(dev) || _dos_intvcg(0x01f5) != state->newvector ||
-        (loaded_ids & state->mask) != 0) {
+    if (state == NULL || 
+        state->magic != ZUSBSCSI_STATE_MAGIC ||
+        !tsr_isfreeable(dev) ||
+        _dos_intvcg(0x01f5) != state->newvector) {
+      tsr_super(ssp);
       _dos_print("zusbscsi: 常駐解除できません\r\n");
       return 1;
     }
 
-    ssp = tsr_super(0);
+    // USBデバイスに割り当てたSCSI IDが使用中かどうかを確認する
+    // 使用中ビットがセットされていてもそのIDをSUSIEが使用していなければ未使用とみなす
+    // (SUSIEが常駐解除する際に使用中ビットをクリアしていないことへの対策)
+    // (既存の他のSCSIドライバのほとんどが組み込み後の常駐解除ができないタイプなので考慮不要)
+    uint8_t mask = state->mask;
+    if ((loaded_ids & mask) != 0 &&
+        (loaded_ids & mask & susie_used_ids()) != 0) {
+      tsr_super(ssp);
+      _dos_print("zusbscsi: 使用中の SCSI ID があるため常駐解除できません\r\n");
+      return 1;
+    }
+
     _iocs_b_intvcs(0x01f5, state->oldvector);
     for (int i = 0; i < ZUSBSCSI_MAX_DRIVE; i++) {
       if (state->channels[i] >= 0) {
@@ -245,11 +287,14 @@ int main(int argc, char **argv)
         zusb_close();
       }
     }
-    tsr_super(ssp);
     if (tsr_freedev(dev) < 0) {
+      tsr_super(ssp);
       _dos_print("zusbscsi: 常駐解除できません\r\n");
       return 1;
     }
+    *(volatile uint8_t *)0x000cec &= ~mask;
+    tsr_super(ssp);
+
     _dos_print("zusbscsi: 常駐解除しました\r\n");
     return 0;
   }
