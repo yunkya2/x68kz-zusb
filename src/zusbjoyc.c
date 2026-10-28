@@ -225,7 +225,7 @@ int main(int argc, char **argv)
         if (stay) {
             zusb->inten = 0;
             zusb_send_cmd(ZUSB_CMD_GETIVECT);
-            resparam.oldvect = _iocs_b_intvcs(zusb->param & 0xff, zusbintr_asm);
+            resparam.oldvect = (void *)_iocs_b_intvcs(zusb->param & 0xff, zusbintr_asm);
 
             zusb_send_cmd(ZUSB_CMD_SUBMITXFER(0));
             zusb->inten = ZUSB_STAT_ERROR|ZUSB_STAT_PCOMPLETE(0);
