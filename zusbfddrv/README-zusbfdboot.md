@@ -9,11 +9,11 @@ X68000 Z が起動する場合、エミュレータ上では 2 つの SDカー�
 
 ## 使用方法
 
-1. X68000 Z の Pseudo SCSI 機能設定手順に従って、USB メモリの SCSI ディスクイメージ (HDSファイル) から起動できるように設定しておきます。
+1. X68000 Z エミュレータを、USB メモリの SCSI ディスクイメージ (HDSファイル) から起動できるように設定しておきます。
 2. zusbfdboot1.hds または zusbfdboot2.hds ファイルを USB メモリの X68000Z フォルダ内にコピーします (zusbfdboot1.hds は USB FDD 1ドライブ版、zusbfdboot2.hds は 2ドライブ版です)。
-3. `X68000Z/pscsi.ini` ファイルを編集して、USB メモリにコピーしたディスクイメージから起動するように設定します。
+3. `X68000Z/scsi.ini` ファイル (HACKER'S EMULATORの場合) を編集して、USB メモリにコピーしたディスクイメージから起動するように設定します。
     ```
-    [pscsi]
+    [scsi]
     ID0=zusbfdboot1.hds   (または zusbfdboot2.hds)
     ```
 4. X68000 Z に 2. の USB メモリと USB FDD を接続し、USB FDD に起動したいディスクを入れた状態で X68000 Z を起動します。
